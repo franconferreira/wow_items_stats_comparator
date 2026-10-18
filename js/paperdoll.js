@@ -99,23 +99,45 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         let badgeHtml = '';
         let cardBorder = '';
 
-        if (diffPct < -3.5) {
-            action = 'INCREASE';
-            badgeHtml = `<span class="px-2.5 py-1 rounded-full text-xs font-black bg-red-500/20 text-red-300 border border-red-500/40 flex items-center gap-1">🔼 SUBIR (${Math.abs(diffPct).toFixed(1)}% abajo)</span>`;
-            cardBorder = 'border-red-500/40 bg-red-950/10';
-        } else if (diffPct > 3.5) {
-            action = 'DECREASE';
-            badgeHtml = `<span class="px-2.5 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">🔽 BAJAR / EXCESO (+${diffPct.toFixed(1)}%)</span>`;
-            cardBorder = 'border-amber-500/40 bg-amber-950/10';
+        if (diffPct < 0) {
+            // Stat is below average -> Arrow Down
+            const arrowSvg = (typeof getIcon === 'function') ? getIcon('arrowDown', 'w-3.5 h-3.5 text-current') : '↓';
+            const diffStr = `${Math.abs(diffPct).toFixed(1)}%`;
+            if (diffPct < -3.5) {
+                action = 'INCREASE';
+                badgeHtml = `<span class="px-2.5 py-1 rounded-full text-xs font-black bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 shadow-sm">${arrowSvg}<span>${diffStr}</span></span>`;
+                cardBorder = 'border-rose-500/40 bg-rose-950/10';
+            } else {
+                action = 'OPTIMAL';
+                badgeHtml = `<span class="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">${arrowSvg}<span>${diffStr}</span></span>`;
+                cardBorder = 'border-emerald-500/40 bg-emerald-950/10';
+            }
+        } else if (diffPct > 0) {
+            // Stat is above average -> Arrow Up
+            const arrowSvg = (typeof getIcon === 'function') ? getIcon('arrowUp', 'w-3.5 h-3.5 text-current') : '↑';
+            const diffStr = `${Math.abs(diffPct).toFixed(1)}%`;
+            if (diffPct > 3.5) {
+                action = 'DECREASE';
+                badgeHtml = `<span class="px-2.5 py-1 rounded-full text-xs font-black bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 shadow-sm">${arrowSvg}<span>${diffStr}</span></span>`;
+                cardBorder = 'border-amber-500/40 bg-amber-950/10';
+            } else {
+                action = 'OPTIMAL';
+                badgeHtml = `<span class="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">${arrowSvg}<span>${diffStr}</span></span>`;
+                cardBorder = 'border-emerald-500/40 bg-emerald-950/10';
+            }
         } else {
+            // Equal
+            const arrowSvg = (typeof getIcon === 'function') ? getIcon('arrowEqual', 'w-3.5 h-3.5 text-emerald-400') : '=';
             action = 'OPTIMAL';
-            badgeHtml = `<span class="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">⚖️ ÓPTIMO (±${Math.abs(diffPct).toFixed(1)}%)</span>`;
+            badgeHtml = `<span class="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 shadow-sm">${arrowSvg}<span>0.0%</span></span>`;
             cardBorder = 'border-emerald-500/40 bg-emerald-950/10';
         }
 
+        const statDisplayName = (typeof t === 'function' && t(st)) ? t(st) : conf.name;
+
         diagnostics.push({
             stat: st,
-            name: conf.name,
+            name: statDisplayName,
             color: conf.color,
             bg: conf.bg,
             userVal,
@@ -171,12 +193,12 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
 
                 <div class="grid grid-cols-2 gap-2 text-center py-1">
                     <div class="bg-gray-900/80 rounded-lg p-2 border border-gray-700/40">
-                        <div class="text-[10px] text-gray-400 uppercase font-semibold">Tu Personaje</div>
+                        <div class="text-[10px] text-gray-400 uppercase font-semibold">${typeof t === 'function' ? t('yourCharacter') : 'Tu Personaje'}</div>
                         <div class="text-lg font-black text-white mt-0.5">${d.userVal.toLocaleString()}</div>
                         <div class="text-xs font-bold" style="color: ${d.color};">${d.userPct.toFixed(1)}%</div>
                     </div>
                     <div class="bg-gray-900/80 rounded-lg p-2 border border-gray-700/40">
-                        <div class="text-[10px] text-gray-400 uppercase font-semibold">Promedio Top 50</div>
+                        <div class="text-[10px] text-gray-400 uppercase font-semibold">${typeof t === 'function' ? t('top50Avg') : 'Promedio Top 50'}</div>
                         <div class="text-lg font-black text-gray-300 mt-0.5">${d.aVal.toLocaleString()}</div>
                         <div class="text-xs font-bold text-gray-400">${d.aPct.toFixed(1)}%</div>
                     </div>
@@ -248,7 +270,7 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         const it = uItems[slotKey];
         if (!it && !pkgItemsBySlot[slotKey]) return '';
 
-        const slotLabel = SLOT_NAMES_ES[slotKey] || slotKey;
+        const slotLabel = (typeof getSlotName === 'function') ? getSlotName(slotKey) : (SLOT_NAMES_ES[slotKey] || slotKey);
 
         // If viewing a package tab and this slot is a recommended dungeon drop / crafted / raid
         if (selectedPkg && pkgItemsBySlot[slotKey]) {
@@ -268,24 +290,24 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                     badgeBorder = 'border-blue-500/40 text-blue-300';
                     badgeText = 'CRAFT';
                     pinBg = 'border-blue-500/40 bg-blue-950/80 text-blue-300';
-                    pinIcon = '🔨';
-                    pinTitle = `Fabricación con Chispa (${dropItem.dungeon || 'Profesión'})`;
+                    pinIcon = (typeof getIcon === 'function') ? getIcon('hammer', 'w-3.5 h-3.5 text-blue-300') : '';
+                    pinTitle = `${typeof t === 'function' ? t('sparkCraft') : 'Fabricación con Chispa'} (${dropItem.dungeon || 'Profesión'})`;
                 } else if (dropItem.itemType === 'raid') {
                     accentBorder = 'border-red-500/50 bg-red-950/20 hover:border-red-400';
                     accentColor = 'text-red-400';
                     badgeBorder = 'border-red-500/40 text-red-300';
                     badgeText = 'RAID';
                     pinBg = 'border-red-500/40 bg-red-950/80 text-red-300';
-                    pinIcon = '🔥';
-                    pinTitle = `Banda: ${dropItem.dungeon} (Jefe: ${dropItem.boss})`;
+                    pinIcon = (typeof getIcon === 'function') ? getIcon('flame', 'w-3.5 h-3.5 text-red-300') : '';
+                    pinTitle = `${typeof t === 'function' ? t('raid') : 'Banda'}: ${dropItem.dungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${dropItem.boss})`;
                 } else {
                     accentBorder = 'border-purple-500/50 bg-purple-950/20 hover:border-purple-400';
                     accentColor = 'text-purple-400';
                     badgeBorder = 'border-purple-500/40 text-purple-300';
                     badgeText = 'M+';
                     pinBg = 'border-purple-500/40 bg-purple-950/80 text-purple-300';
-                    pinIcon = '📍';
-                    pinTitle = `Mazmorra M+: ${dropItem.dungeon} (Jefe: ${dropItem.boss})`;
+                    pinIcon = (typeof getIcon === 'function') ? getIcon('pin', 'w-3.5 h-3.5 text-purple-300') : '';
+                    pinTitle = `${typeof t === 'function' ? t('dungeonMPlus') : 'Mazmorra M+'}: ${dropItem.dungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${dropItem.boss})`;
                 }
             } else if (isPkg2) {
                 accentBorder = 'border-amber-500/50 bg-amber-950/20 hover:border-amber-400';
@@ -293,16 +315,16 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                 badgeBorder = 'border-amber-500/40 text-amber-400';
                 badgeText = 'DROP';
                 pinBg = 'border-amber-500/40 bg-amber-950/80 text-amber-300';
-                pinIcon = '📍';
-                pinTitle = `Dropea en ${dropItem.dungeon} (Jefe: ${dropItem.boss})`;
+                pinIcon = (typeof getIcon === 'function') ? getIcon('pin', 'w-3.5 h-3.5 text-amber-300') : '';
+                pinTitle = `${typeof t === 'function' ? t('dropIn') : 'Dropea en'} ${dropItem.dungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${dropItem.boss})`;
             } else {
                 accentBorder = 'border-cyan-500/50 bg-cyan-950/20 hover:border-cyan-400';
                 accentColor = 'text-cyan-400';
                 badgeBorder = 'border-cyan-500/40 text-cyan-400';
                 badgeText = 'DROP';
                 pinBg = 'border-cyan-500/40 bg-cyan-950/80 text-cyan-300';
-                pinIcon = '📍';
-                pinTitle = `Dropea en ${dropItem.dungeon} (Jefe: ${dropItem.boss})`;
+                pinIcon = (typeof getIcon === 'function') ? getIcon('pin', 'w-3.5 h-3.5 text-cyan-300') : '';
+                pinTitle = `${typeof t === 'function' ? t('dropIn') : 'Dropea en'} ${dropItem.dungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${dropItem.boss})`;
             }
 
             const imgBorder = isOptimal
@@ -369,8 +391,8 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                         </div>
                     </div>
 
-                    <div class="w-8 h-8 rounded-lg border border-purple-500/30 bg-purple-950/60 text-purple-300 flex items-center justify-center shrink-0 select-none" title="Abalorio conservado (excluido de paquetes)">
-                        <span class="text-sm leading-none">🔒</span>
+                    <div class="w-8 h-8 rounded-lg border border-purple-500/30 bg-purple-950/60 text-purple-300 flex items-center justify-center shrink-0 select-none" title="${typeof t === 'function' ? t('trinketKept') : 'Abalorio conservado (excluido de paquetes)'}">
+                        <span class="text-xs leading-none">${typeof getIcon === 'function' ? getIcon('lock', 'w-3.5 h-3.5 text-purple-300') : ''}</span>
                     </div>
                 </div>
             `;
@@ -379,7 +401,7 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         // If package is active and slot was not replaced, it is a conserved piece in this set
         if (selectedPkg) {
             return `
-                <div data-slot="${slotLabel}" title="${slotLabel}: ${it ? it.name : ''} (ilvl ${ilvl}) — Pieza conservada en este set" class="p-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-400/60 transition flex items-center justify-between gap-2 shadow-sm">
+                <div data-slot="${slotLabel}" title="${slotLabel}: ${it ? it.name : ''} (ilvl ${ilvl}) — ${typeof t === 'function' ? t('keptPiece') : 'Pieza conservada en este set'}" class="p-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-400/60 transition flex items-center justify-between gap-2 shadow-sm">
                     <div class="flex items-center space-x-2.5 min-w-0 flex-1">
                         <div class="relative shrink-0">
                             <img src="${iconUrl}" class="w-9 h-9 rounded-lg border-2 border-emerald-400/70 shadow-[0_0_8px_rgba(52,211,153,0.3)] bg-black" alt="${it ? it.name : ''}">
@@ -400,8 +422,8 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                         </div>
                     </div>
 
-                    <div class="w-8 h-8 rounded-lg border border-emerald-500/40 bg-emerald-950/60 text-emerald-400 flex items-center justify-center shrink-0 select-none" title="Pieza actual conservada en este set">
-                        <span class="text-sm leading-none">🔒</span>
+                    <div class="w-8 h-8 rounded-lg border border-emerald-500/40 bg-emerald-950/60 text-emerald-400 flex items-center justify-center shrink-0 select-none" title="${typeof t === 'function' ? t('currentKept') : 'Pieza actual conservada en este set'}">
+                        <span class="text-xs leading-none">${typeof getIcon === 'function' ? getIcon('lock', 'w-3.5 h-3.5 text-emerald-400') : ''}</span>
                     </div>
                 </div>
             `;
@@ -431,8 +453,8 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                     </div>
                 </div>
 
-                <button type="button" onclick="toggleSimCSlotLock('${slotKey}')" class="w-8 h-8 rounded-lg border transition shrink-0 flex items-center justify-center ${isLocked ? 'bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-400 border-emerald-500/40 shadow-sm' : 'bg-gray-800/80 hover:bg-gray-700/90 text-amber-400 border-amber-500/30'}" title="${isLocked ? 'Conservado (Click para marcar reemplazo)' : 'A Reemplazar (Click para fijar/conservar)'}">
-                    <span class="text-sm select-none leading-none">${isLocked ? '🔒' : '🔓'}</span>
+                <button type="button" onclick="toggleSimCSlotLock('${slotKey}')" class="w-8 h-8 rounded-lg border transition shrink-0 flex items-center justify-center ${isLocked ? 'bg-emerald-950/70 hover:bg-emerald-900/90 text-emerald-400 border-emerald-500/40 shadow-sm' : 'bg-gray-800/80 hover:bg-gray-700/90 text-amber-400 border-amber-500/30'}" title="${isLocked ? (typeof t === 'function' ? t('lockedTooltip') : 'Conservado (Click para marcar reemplazo)') : (typeof t === 'function' ? t('unlockedTooltip') : 'A Reemplazar (Click para fijar/conservar)')}">
+                    <span class="text-xs select-none leading-none">${isLocked ? ((typeof getIcon === 'function') ? getIcon('lock', 'w-3.5 h-3.5 text-emerald-400') : '') : ((typeof getIcon === 'function') ? getIcon('unlock', 'w-3.5 h-3.5 text-amber-400') : '')}</span>
                 </button>
             </div>
         `;
@@ -445,26 +467,27 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         if (uItems['offhand']) {
             return renderPaperdollSlotCard('offhand');
         }
-        return `
-            <div data-slot="Mano Secundaria" title="Mano Secundaria" class="p-2 rounded-xl border border-gray-800/80 bg-gray-900/30 opacity-70 flex items-center justify-between gap-2 shadow-sm">
+            const offhandLabel = (typeof getSlotName === 'function') ? getSlotName('offhand') : 'Mano Secundaria';
+            return `
+            <div data-slot="${offhandLabel}" title="${offhandLabel}" class="p-2 rounded-xl border border-gray-800/80 bg-gray-900/30 opacity-70 flex items-center justify-between gap-2 shadow-sm">
                 <div class="flex items-center space-x-2.5 min-w-0 flex-1">
                     <div class="w-9 h-9 rounded-lg border border-dashed border-gray-700 bg-black/60 flex items-center justify-center text-gray-500 text-sm shrink-0">
-                        🛡️
+                        ${(typeof getIcon === 'function') ? getIcon('shield', 'w-4 h-4 text-gray-500') : ''}
                     </div>
                     <div class="truncate flex-1 min-w-0">
                         <div class="flex items-center gap-1.5 min-w-0">
-                            <span class="text-xs font-semibold text-gray-400 truncate">Arma de 2 Manos</span>
-                            <span class="text-[10px] font-mono text-gray-500 shrink-0">2 Manos</span>
+                            <span class="text-xs font-semibold text-gray-400 truncate">${typeof t === 'function' ? t('twoHandWeapon') : 'Arma de 2 Manos'}</span>
+                            <span class="text-[10px] font-mono text-gray-500 shrink-0">${typeof t === 'function' ? t('twoHand') : '2 Manos'}</span>
                         </div>
-                        <span class="text-[10px] text-gray-500 block truncate mt-0.5">Ranura libre / no requerida</span>
+                        <span class="text-[10px] text-gray-500 block truncate mt-0.5">${typeof t === 'function' ? t('freeSlot') : 'Ranura libre / no requerida'}</span>
                     </div>
                 </div>
-                <span class="text-[10px] text-gray-500 italic shrink-0 px-1">Cubierto</span>
+                <span class="text-[10px] text-gray-500 italic shrink-0 px-1">${typeof t === 'function' ? t('covered') : 'Cubierto'}</span>
             </div>
         `;
     }
 
-    function renderPaperdollCosmeticCard(slotKey, label, emoji) {
+    function renderPaperdollCosmeticCard(slotKey, label, iconHtml) {
         if (pkgItemsBySlot[slotKey]) {
             return renderPaperdollSlotCard(slotKey);
         }
@@ -475,11 +498,11 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
             <div data-slot="${label}" title="${label}" class="p-2 rounded-xl border border-gray-800/60 bg-gray-900/20 opacity-50 flex items-center justify-between gap-2 transition">
                 <div class="flex items-center space-x-2.5 min-w-0 flex-1">
                     <div class="w-9 h-9 rounded-lg border border-dashed border-gray-700 bg-black/50 flex items-center justify-center text-gray-500 text-sm shrink-0">
-                        ${emoji}
+                        ${iconHtml}
                     </div>
                     <div class="truncate flex-1 min-w-0">
                         <span class="text-xs font-semibold text-gray-400 block truncate">${label}</span>
-                        <span class="text-[10px] text-gray-500 block truncate mt-0.5">Ranura Cosmética</span>
+                        <span class="text-[10px] text-gray-500 block truncate mt-0.5">${typeof t === 'function' ? t('emptyCosmetic') : 'Ranura Cosmética'}</span>
                     </div>
                 </div>
                 <span class="text-[9px] text-gray-500 bg-gray-800/40 px-1.5 py-0.5 rounded border border-gray-700/40 shrink-0">Sin stats</span>
@@ -493,8 +516,8 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         renderPaperdollSlotCard('shoulder'),
         renderPaperdollSlotCard('back'),
         renderPaperdollSlotCard('chest'),
-        renderPaperdollCosmeticCard('shirt', 'Camisa', '👕'),
-        renderPaperdollCosmeticCard('tabard', 'Tabardo', '🛡️'),
+        renderPaperdollCosmeticCard('shirt', (typeof t === 'function') ? t('shirt') : 'Camisa', (typeof getIcon === 'function') ? getIcon('shirt', 'w-4 h-4 text-gray-500') : ''),
+        renderPaperdollCosmeticCard('tabard', (typeof t === 'function') ? t('tabard') : 'Tabardo', (typeof getIcon === 'function') ? getIcon('shield', 'w-4 h-4 text-gray-500') : ''),
         renderPaperdollSlotCard('wrist')
     ].join('');
 
@@ -582,7 +605,7 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         <div class="space-y-4 bg-gray-900/60 border border-gray-800 rounded-xl p-4">
             <div class="space-y-1.5">
                 <div class="flex items-center justify-between text-xs font-bold text-gray-300">
-                    <span>Distribución de Tu Personaje:</span>
+                    <span>${typeof t === 'function' ? t('charDistribution') : 'Distribución de Tu Personaje'}:</span>
                     <span class="font-mono text-cyan-400">${userTotalSec.toLocaleString()} pts totales</span>
                 </div>
                 <div class="h-6 w-full rounded-lg overflow-hidden flex border border-gray-700 bg-gray-950">
@@ -592,7 +615,7 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
 
             <div class="space-y-1.5">
                 <div class="flex items-center justify-between text-xs font-bold text-gray-300">
-                    <span>Consenso Promedio del Top 50:</span>
+                    <span>${typeof t === 'function' ? t('top50Distribution') : 'Consenso Promedio del Top 50'}:</span>
                     <span class="font-mono text-amber-400">${top10SumAll > 0 ? Math.round(top10SumAll / count).toLocaleString() : 0} pts promedio</span>
                 </div>
                 <div class="h-6 w-full rounded-lg overflow-hidden flex border border-gray-700 bg-gray-950">
@@ -603,7 +626,7 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
 
         <!-- 4 Stat Diagnostic Cards Grid -->
         <div>
-            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Diagnóstico Detallado por Atributo Secundario</h4>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">${typeof t === 'function' ? t('detailedDiagnostic') : 'Diagnóstico Detallado por Atributo Secundario'}</h4>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 ${statCardsHtml}
             </div>
@@ -614,26 +637,26 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-cardborder pb-3">
                 <div>
                     <h4 class="text-base font-black text-white flex items-center gap-2">
-                        <span>🛡️</span>
-                        Detección de Temporada e Inspección de Ranuras
+                        <span class="text-amber-400">${typeof getIcon === 'function' ? getIcon('shield', 'w-4 h-4') : ''}</span>
+                        ${typeof t === 'function' ? t('seasonDetectionTitle') : 'Detección de Temporada e Inspección de Ranuras'}
                     </h4>
                 </div>
                 <div class="flex items-center gap-1.5 bg-gray-950/90 p-1 rounded-xl border border-gray-700/80 shadow-inner shrink-0 flex-wrap sm:flex-nowrap">
                     <button type="button" onclick="switchPaperdollTab('current')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'current' ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800/60'}">
-                        <span>🎒</span>
-                        <span>Actual</span>
+                        <span>${typeof getIcon === 'function' ? getIcon('backpack', 'w-3.5 h-3.5') : ''}</span>
+                        <span>${typeof t === 'function' ? t('tabActual') : 'Actual'}</span>
                     </button>
                     <button type="button" onclick="switchPaperdollTab('optimal')" ${!solverResult.pkgOptimal ? 'disabled class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 opacity-40 cursor-not-allowed"' : `class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'optimal' ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800/60'}"`}>
-                        <span>⭐</span>
-                        <span>Óptimo</span>
+                        <span>${typeof getIcon === 'function' ? getIcon('star', 'w-3.5 h-3.5') : ''}</span>
+                        <span>${typeof t === 'function' ? t('tabOptimal') : 'Óptimo'}</span>
                     </button>
                     <button type="button" onclick="switchPaperdollTab('pkg1')" ${!solverResult.pkg1 ? 'disabled class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 opacity-40 cursor-not-allowed"' : `class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'pkg1' ? 'bg-cyan-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800/60'}"`}>
-                        <span>🏆</span>
-                        <span>Recomendado</span>
+                        <span>${typeof getIcon === 'function' ? getIcon('trophy', 'w-3.5 h-3.5') : ''}</span>
+                        <span>${typeof t === 'function' ? t('tabRecommended') : 'Recomendado'}</span>
                     </button>
                     <button type="button" onclick="switchPaperdollTab('pkg2')" ${!solverResult.pkg2 ? 'disabled class="px-3 py-1.5 rounded-lg text-xs font-bold text-gray-600 opacity-40 cursor-not-allowed"' : `class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${activeTab === 'pkg2' ? 'bg-amber-600 text-white shadow-md' : 'text-gray-400 hover:text-white hover:bg-gray-800/60'}"`}>
-                        <span>🥈</span>
-                        <span>Alternativo</span>
+                        <span>${typeof getIcon === 'function' ? getIcon('medal', 'w-3.5 h-3.5') : ''}</span>
+                        <span>${typeof t === 'function' ? t('tabAlternative') : 'Alternativo'}</span>
                     </button>
                 </div>
             </div>

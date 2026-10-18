@@ -39,12 +39,15 @@ function toggleCollapse(contentId, chevronId, statusId) {
     const isHidden = content.classList.contains('hidden');
     if (isHidden) {
         content.classList.remove('hidden');
+        const collapseTxt = (typeof t === 'function') ? t('collapse') : 'Plegar';
+        const expandTxt = (typeof t === 'function') ? t('expand') : 'Desplegar';
         if (chevron) chevron.style.transform = 'rotate(0deg)';
-        if (status) status.textContent = 'Plegar';
+        if (status) status.textContent = collapseTxt;
     } else {
+        const expandTxt = (typeof t === 'function') ? t('expand') : 'Desplegar';
         content.classList.add('hidden');
         if (chevron) chevron.style.transform = 'rotate(-90deg)';
-        if (status) status.textContent = 'Desplegar';
+        if (status) status.textContent = expandTxt;
     }
 }
 window.toggleCollapse = toggleCollapse;
@@ -55,6 +58,9 @@ function toggleAllSections(collapseAll) {
         { body: 'raid-bosses-body', chevron: 'raid-bosses-chevron', status: 'raid-bosses-status' }
     ];
 
+    const collapseTxt = (typeof t === 'function') ? t('collapse') : 'Plegar';
+    const expandTxt = (typeof t === 'function') ? t('expand') : 'Desplegar';
+
     sections.forEach(s => {
         const bodyEl = document.getElementById(s.body);
         const chevronEl = document.getElementById(s.chevron);
@@ -64,11 +70,11 @@ function toggleAllSections(collapseAll) {
         if (collapseAll) {
             bodyEl.classList.add('hidden');
             if (chevronEl) chevronEl.style.transform = 'rotate(-90deg)';
-            if (statusEl) statusEl.textContent = 'Desplegar';
+            if (statusEl) statusEl.textContent = expandTxt;
         } else {
             bodyEl.classList.remove('hidden');
             if (chevronEl) chevronEl.style.transform = 'rotate(0deg)';
-            if (statusEl) statusEl.textContent = 'Plegar';
+            if (statusEl) statusEl.textContent = collapseTxt;
         }
     });
 }

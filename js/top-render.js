@@ -49,29 +49,29 @@ function switchTop10GearTab(tabKey) {
     // Tab configurations
     const tabConfigs = {
         slots: {
-            title: 'Ítems Más Elegidos por Ranura',
-            badge: 'Top 50 Builds',
+            title: (typeof t === 'function') ? t('tabSlotsTitle') : 'Ítems Más Elegidos por Ranura',
+            badge: (typeof t === 'function') ? t('top50BuildsBadge') : 'Top 50 Builds',
             badgeClass: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
-            subtitle: 'Abalorios, armas y anillos más populares del Top 50',
-            icon: '🛡️',
+            subtitle: (typeof t === 'function') ? t('tabSlotsSubtitle') : 'Abalorios, armas y anillos más populares del Top 50',
+            icon: (typeof getIcon === 'function') ? getIcon('shield', 'w-4 h-4 text-yellow-400') : '',
             iconWrapClass: 'w-8 h-8 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-400 shrink-0',
             activeBtnClass: 'bg-yellow-600 text-white shadow-md'
         },
         crafted: {
-            title: 'Ítems Crafteados Más Utilizados',
-            badge: 'Profesiones & Embellishments',
+            title: (typeof t === 'function') ? t('tabCraftedTitle') : 'Ítems Crafteados Más Utilizados',
+            badge: (typeof t === 'function') ? t('professionsBadge') : 'Profesiones & Embellishments',
             badgeClass: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
-            subtitle: 'Piezas fabricadas con chispas o profesiones elegidas en lugar de drops de mazmorra o banda',
-            icon: '🔨',
+            subtitle: (typeof t === 'function') ? t('tabCraftedSubtitle') : 'Piezas fabricadas con chispas o profesiones elegidas en lugar de drops de mazmorra o banda',
+            icon: (typeof getIcon === 'function') ? getIcon('hammer', 'w-4 h-4 text-blue-400') : '',
             iconWrapClass: 'w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0',
             activeBtnClass: 'bg-blue-600 text-white shadow-md'
         },
         gems: {
-            title: 'Gemas y Encantamientos en Común',
-            badge: 'Engarces & Encantos',
+            title: (typeof t === 'function') ? t('tabGemsTitle') : 'Gemas y Encantamientos en Común',
+            badge: (typeof t === 'function') ? t('socketsBadge') : 'Engarces & Encantos',
             badgeClass: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
-            subtitle: 'Engarces de gemas más elegidos y consenso de encantamientos por cada pieza',
-            icon: '💎',
+            subtitle: (typeof t === 'function') ? t('tabGemsSubtitle') : 'Engarces de gemas más elegidos y consenso de encantamientos por cada pieza',
+            icon: (typeof getIcon === 'function') ? getIcon('gem', 'w-4 h-4 text-emerald-400') : '',
             iconWrapClass: 'w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0',
             activeBtnClass: 'bg-emerald-600 text-white shadow-md'
         }
@@ -85,7 +85,7 @@ function switchTop10GearTab(tabKey) {
         badgeEl.textContent = currentConfig.badge;
         badgeEl.className = `text-[10px] font-bold px-2 py-0.5 rounded-full ${currentConfig.badgeClass}`;
     }
-    if (iconEl) iconEl.textContent = currentConfig.icon;
+    if (iconEl) iconEl.innerHTML = currentConfig.icon;
     if (iconWrap) iconWrap.className = currentConfig.iconWrapClass;
 
     Object.keys(buttons).forEach(k => {
@@ -120,10 +120,10 @@ function renderResults(players, classSlug, specSlug = null) {
 
     if (exclude344) {
         if (badge) badge.classList.remove('hidden');
-        if (subtitle) subtitle.textContent = 'Promedio y distribución recalculados excluyendo piezas ilvl 344';
+        if (subtitle) subtitle.textContent = (typeof t === 'function') ? t('consensusSubtitleExclude') : 'Promedio y distribución recalculados excluyendo piezas ilvl 344';
     } else {
         if (badge) badge.classList.add('hidden');
-        if (subtitle) subtitle.textContent = `Promedio y distribución de estadísticas de los ${players.length || 50} mejores clasificados`;
+        if (subtitle) subtitle.textContent = (typeof t === 'function') ? t('consensusSubtitle', { n: players.length || 50 }) : `Promedio y distribución de estadísticas de los ${players.length || 50} mejores clasificados`;
     }
 
     renderConsensus(players, classSlug, exclude344);
@@ -682,16 +682,18 @@ function renderRaidBossLoot(players, seasonSlug, classSlug) {
                     const iconUrl = it.icon
                         ? `https://wow.zamimg.com/images/wow/icons/medium/${it.icon}.jpg`
                         : 'https://wow.zamimg.com/images/wow/icons/medium/inv_misc_questionmark.jpg';
-                    const slotName = SLOT_NAMES_ES[it.slot] || it.slot;
+                    const slotName = (typeof getSlotName === 'function') ? getSlotName(it.slot) : (SLOT_NAMES_ES[it.slot] || it.slot);
 
                     let priorityBadge = '';
                     let itemBoxClass = '';
 
                     if (pct >= 50) {
-                        priorityBadge = `<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30">🔥 BiS (${pct}%)</span>`;
+                        const flameIcon = (typeof getIcon === 'function') ? getIcon('flame', 'w-3 h-3 text-red-300') : '';
+                        priorityBadge = `<span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-500/20 text-red-300 border border-red-500/30 flex items-center gap-1">${flameIcon}<span>BiS (${pct}%)</span></span>`;
                         itemBoxClass = 'bg-red-950/20 border-red-500/30';
                     } else if (pct >= 30) {
-                        priorityBadge = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">⭐ Alta (${pct}%)</span>`;
+                        const starIcon = (typeof getIcon === 'function') ? getIcon('star', 'w-3 h-3 text-amber-300') : '';
+                        priorityBadge = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">${starIcon}<span>Alta (${pct}%)</span></span>`;
                         itemBoxClass = 'bg-amber-950/20 border-amber-500/30';
                     } else {
                         priorityBadge = `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">${pct}%</span>`;

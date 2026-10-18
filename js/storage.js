@@ -171,18 +171,22 @@ function showRestoredDataBadge(timestamp) {
     if (timestamp) {
         const diffMinutes = Math.round((Date.now() - timestamp) / 60000);
         if (diffMinutes < 1) {
-            timeStr = 'hace un momento';
+            timeStr = (typeof t === 'function') ? t('agoMoment') : 'hace un momento';
         } else if (diffMinutes < 60) {
-            timeStr = `hace ${diffMinutes} min`;
+            timeStr = (typeof t === 'function') ? t('agoMin', { n: diffMinutes }) : `hace ${diffMinutes} min`;
         } else {
             const diffHours = Math.round(diffMinutes / 60);
-            timeStr = `hace ${diffHours} h`;
+            timeStr = (typeof t === 'function') ? t('agoH', { n: diffHours }) : `hace ${diffHours} h`;
         }
     }
 
+    const diskIcon = (typeof getIcon === 'function') ? getIcon('disk', 'w-3.5 h-3.5 text-cyan-300') : '';
+    const badgeText = (typeof t === 'function') ? t('restoredBadge') : 'Último análisis restaurado';
+    const deleteText = (typeof t === 'function') ? t('delete') : 'Borrar';
+
     badge.innerHTML = `
-        <span>💾 Último análisis restaurado ${timeStr ? `(${timeStr})` : ''}</span>
-        <button type="button" onclick="clearSavedAnalysis()" class="underline hover:text-white text-[10px]" title="Borrar datos guardados">Borrar</button>
+        <span class="flex items-center gap-1.5">${diskIcon} ${badgeText} ${timeStr ? `(${timeStr})` : ''}</span>
+        <button type="button" onclick="clearSavedAnalysis()" class="underline hover:text-white text-[10px]" title="${deleteText}">${deleteText}</button>
     `;
     badge.classList.remove('hidden');
 }

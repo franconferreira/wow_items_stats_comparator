@@ -176,6 +176,40 @@ const SLOT_NAMES_ES = {
     off_hand: 'Mano Secundaria'
 };
 
+const SLOT_NAMES_EN = {
+    head: 'Head',
+    neck: 'Neck',
+    shoulder: 'Shoulder',
+    back: 'Back',
+    chest: 'Chest',
+    shirt: 'Shirt',
+    tabard: 'Tabard',
+    wrist: 'Wrist',
+    hands: 'Hands',
+    waist: 'Waist',
+    legs: 'Legs',
+    feet: 'Feet',
+    finger: 'Ring',
+    finger1: 'Ring 1',
+    finger2: 'Ring 2',
+    trinket: 'Trinket',
+    trinket1: 'Trinket 1',
+    trinket2: 'Trinket 2',
+    mainhand: 'Main Hand',
+    main_hand: 'Main Hand',
+    offhand: 'Off Hand',
+    off_hand: 'Off Hand'
+};
+
+function getSlotName(slotKey) {
+    const lang = (typeof getLanguage === 'function') ? getLanguage() : 'es';
+    if (lang === 'en') {
+        return SLOT_NAMES_EN[slotKey] || SLOT_NAMES_ES[slotKey] || slotKey;
+    }
+    return SLOT_NAMES_ES[slotKey] || slotKey;
+}
+
+
 const CLASS_ARMOR_MAP = {
     'death-knight': 'plate',
     'paladin': 'plate',
@@ -238,6 +272,8 @@ if (typeof window !== 'undefined') {
     window.STAT_COLORS = STAT_COLORS;
     window.CRAFTED_BONUS_SET = CRAFTED_BONUS_SET;
     window.SLOT_NAMES_ES = SLOT_NAMES_ES;
+    window.SLOT_NAMES_EN = SLOT_NAMES_EN;
+    window.getSlotName = getSlotName;
     window.CLASS_ARMOR_MAP = CLASS_ARMOR_MAP;
     window.SIMC_CLASS_MAP = SIMC_CLASS_MAP;
     window.SAMPLE_SIMC_STRING = SAMPLE_SIMC_STRING;
