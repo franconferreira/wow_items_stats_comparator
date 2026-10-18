@@ -6,7 +6,7 @@ import ssl
 import json
 import sys
 
-PORT = 8080
+PORT = 8088
 ctx = ssl._create_unverified_context()
 
 class ProxyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):

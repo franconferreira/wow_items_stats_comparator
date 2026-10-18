@@ -365,14 +365,14 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                 const bossSlug = dropItem.bossSlug ? `/${dropItem.bossSlug}` : '';
                 const bossHref = bossNpc
                     ? `https://www.wowhead.com/npc=${bossNpc}${bossSlug}`
-                    : `https://www.wowhead.com/search?q=${encodeURIComponent(dropItem.boss)}`;
+                    : `https://www.wowhead.com/zone=16915/the-venomous-abyss`;
                 const wowheadAttr = bossNpc ? `data-wowhead="npc=${bossNpc}"` : '';
-                const bossImgSrc = dropItem.bossImage || (dropItem.bossIcon ? `https://wow.zamimg.com/images/wow/icons/medium/${dropItem.bossIcon}.jpg` : 'https://wow.zamimg.com/images/wow/icons/medium/achievement_boss_zuljin.jpg');
+                const bossImgSrc = dropItem.bossImage || (dropItem.bossIcon ? `https://wow.zamimg.com/images/wow/icons/medium/${dropItem.bossIcon}.jpg` : 'https://wow.zamimg.com/images/wow/icons/medium/inv_121_raid_achievement_ulatek.jpg');
 
                 rightActionHtml = `
                     <div class="relative flex items-center shrink-0">
-                        <a href="${bossHref}" ${wowheadAttr} target="_blank" rel="noopener noreferrer" class="w-8 h-8 rounded-lg border border-red-500/50 bg-[#0d1424] p-0.5 flex items-center justify-center shrink-0 shadow-sm overflow-hidden hover:border-red-400 hover:shadow-[0_0_8px_rgba(239,68,68,0.5)] transition cursor-pointer" ${bossNpc ? '' : `title="${typeof t === 'function' ? t('boss') : 'Jefe'}: ${localizedBoss} (${localizedDungeon})"`}>
-                            <img src="${bossImgSrc}" class="w-full h-full object-cover scale-110 rounded" alt="${localizedBoss}" onerror="this.src='https://wow.zamimg.com/images/wow/icons/medium/achievement_boss_zuljin.jpg'">
+                        <a href="${bossHref}" ${wowheadAttr} target="_blank" rel="noopener noreferrer" class="w-8 h-8 rounded-lg border border-red-500/50 bg-[#0d1424] p-0.5 flex items-center justify-center shrink-0 shadow-sm overflow-hidden hover:border-red-400 hover:shadow-[0_0_8px_rgba(239,68,68,0.5)] transition cursor-pointer" title="${typeof t === 'function' ? t('boss') : 'Jefe'}: ${localizedBoss} (${localizedDungeon})">
+                            <img src="${bossImgSrc}" class="w-full h-full object-cover scale-110 rounded" alt="${localizedBoss}" onerror="this.src='https://wow.zamimg.com/images/wow/icons/medium/inv_121_raid_achievement_ulatek.jpg'">
                         </a>
                     </div>
                 `;

@@ -465,6 +465,17 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                             if (isRaid) break;
                         }
 
+                        if (!isRaid && raids.length > 0 && (it.ilvl >= 334 || /(?:Raid|Banda)/i.test(it.name || ''))) {
+                            const flagship = raids[0].bosses[0];
+                            bossName = flagship.name;
+                            raidName = raids[0].raidName;
+                            bossNpcId = flagship.npcId || null;
+                            bossSlug = flagship.slug || '';
+                            bossImage = flagship.bossImage || null;
+                            bossIcon = flagship.bossIcon || bossIcon;
+                            isRaid = true;
+                        }
+
                         const dItem = SEASON_DUNGEON_LOOT.find(d => d.id === it.item_id);
                         const isUse = (dItem && dItem.isUse !== undefined)
                             ? dItem.isUse
@@ -499,8 +510,10 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                         let bossNpcId = null;
                         let bossSlug = '';
                         let bossImage = null;
+                        let matched = false;
 
                         for (const r of raids) {
+                            // Pass 1: exact item name pattern matching
                             for (const b of r.bosses) {
                                 if (b.patterns && b.patterns.some(pat => it.name.toLowerCase().includes(pat.toLowerCase()))) {
                                     bossName = b.name;
@@ -510,8 +523,14 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                                     bossNpcId = b.npcId || null;
                                     bossSlug = b.slug || '';
                                     bossImage = b.bossImage || null;
+                                    matched = true;
                                     break;
                                 }
+                            }
+                            if (matched) break;
+
+                            // Pass 2: tierSlot matching for Tier set tokens and pieces
+                            for (const b of r.bosses) {
                                 if (b.tierSlot && b.tierSlot === canonical) {
                                     bossName = b.name;
                                     bossTitle = b.title || '';
@@ -520,9 +539,23 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                                     bossNpcId = b.npcId || null;
                                     bossSlug = b.slug || '';
                                     bossImage = b.bossImage || null;
+                                    matched = true;
                                     break;
                                 }
                             }
+                            if (matched) break;
+                        }
+
+                        // Pass 3: Fallback for any other raid drop in Season 2: map to the flagship raid boss (Ula'tek)
+                        if (!matched && raids.length > 0) {
+                            const flagship = raids[0].bosses[0];
+                            bossName = flagship.name;
+                            bossTitle = flagship.title || '';
+                            raidName = raids[0].raidName;
+                            bossIcon = flagship.bossIcon || bossIcon;
+                            bossNpcId = flagship.npcId || null;
+                            bossSlug = flagship.slug || '';
+                            bossImage = flagship.bossImage || null;
                         }
 
                         raidMap.set(it.item_id, {

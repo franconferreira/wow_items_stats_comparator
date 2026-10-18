@@ -47,7 +47,7 @@ Una aplicación web moderna, modular y rápida diseñada para analizar y compara
 
 ## 💻 Ejecución Local
 
-* **Opción 1:** Haz doble clic en el archivo `start.bat`. Esto abrirá automáticamente la aplicación en tu navegador en `http://localhost:8080`.
+* **Opción 1:** Haz doble clic en el archivo `start.bat`. Esto abrirá automáticamente la aplicación en tu navegador en `http://localhost:8088`.
 * **Opción 2:** O simplemente abre el archivo `index.html` con cualquier navegador moderno.
 
 ---
