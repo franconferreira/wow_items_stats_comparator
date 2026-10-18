@@ -281,12 +281,6 @@
                                 </span>
                                 <span data-i18n="btnCrafted">Crafteados</span>
                             </button>
-                            <button type="button" id="top10-tab-btn-gems" onclick="switchTop10GearTab('gems')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-gray-400 hover:text-white hover:bg-gray-800/60">
-                                <span class="w-3.5 h-3.5 flex items-center justify-center">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 3h12l4 6-10 12L2 9l4-6z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2 9h20M10 3l-2 6 4 12 4-12-2-6"/></svg>
-                                </span>
-                                <span data-i18n="btnGems">Gemas y Encantamientos</span>
-                            </button>
                         </div>
 
                         <!-- Collapse Toggle -->
@@ -312,72 +306,6 @@
                         <div id="crafted-items-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                             <!-- Populated by JS -->
                         </div>
-                    </div>
-
-                    <!-- Tab Pane 3: Gems and Enchants -->
-                    <div id="top10-pane-gems" class="hidden space-y-4 mt-4">
-                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <!-- Gems Subcard -->
-                            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4 space-y-3">
-                                <div class="flex items-center justify-between border-b border-gray-800 pb-2.5">
-                                    <div class="flex items-center gap-2">
-                                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                                        <h4 class="text-sm font-bold text-white" data-i18n="gemsSubcardTitle">Gemas Más Utilizadas</h4>
-                                    </div>
-                                    <span class="text-[11px] text-gray-400 font-mono" data-i18n="gemsSubcardSubtitle">Consenso Top 50</span>
-                                </div>
-                                <div id="popular-gems-container" class="space-y-2">
-                                    <!-- Populated by JS -->
-                                </div>
-                            </div>
-
-                            <!-- Enchants Subcard -->
-                            <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4 space-y-3">
-                                <div class="flex items-center justify-between border-b border-gray-800 pb-2.5">
-                                    <div class="flex items-center gap-2">
-                                        <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span>
-                                        <h4 class="text-sm font-bold text-white" data-i18n="enchantsSubcardTitle">Encantamientos por Ranura</h4>
-                                    </div>
-                                    <span class="text-[11px] text-gray-400 font-mono" data-i18n="enchantsSubcardSubtitle">Preferidos</span>
-                                </div>
-                                <div id="popular-enchants-container" class="space-y-2">
-                                    <!-- Populated by JS -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- 2d. Raid Bosses & Loot Priority - Collapsible -->
-            <section class="bg-cardbg border border-cardborder rounded-2xl shadow-xl overflow-hidden transition-all">
-                <div class="p-6 cursor-pointer select-none flex items-center justify-between group hover:bg-gray-800/30 transition-colors" onclick="toggleCollapse('raid-bosses-body', 'raid-bosses-chevron', 'raid-bosses-status')">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
-                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 10-2 0v3a1 1 0 102 0V7z" clip-rule="evenodd"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <h3 class="text-lg font-black text-white group-hover:text-red-400 transition-colors" data-i18n="raidLootTitle">Loot de Banda Recomendado</h3>
-                                <span id="raid-bosses-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
-                                    Raids de la Temporada
-                                </span>
-                            </div>
-                            <p class="text-xs text-gray-400 mt-0.5" data-i18n="raidLootSubtitle">Drops de banda utilizados por los Top 50 agrupados por jefe</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2 text-xs font-semibold text-gray-400 group-hover:text-white bg-gray-900/80 px-3 py-1.5 rounded-lg border border-gray-700/60">
-                        <span id="raid-bosses-status" data-i18n="collapse">Plegar</span>
-                        <svg id="raid-bosses-chevron" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </div>
-                </div>
-                <div id="raid-bosses-body" class="p-6 pt-0 border-t border-cardborder/40">
-                    <div id="raid-bosses-container" class="space-y-6 mt-4">
-                        <!-- Populated by JS -->
                     </div>
                 </div>
             </section>

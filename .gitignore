@@ -9,3 +9,6 @@ __pycache__/
 # Local IDE / editor
 .vscode/
 .idea/
+
+# Scratch & test scripts
+scratch/

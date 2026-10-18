@@ -259,6 +259,7 @@ async function startAnalysis() {
                     name: item.name || tt.name,
                     icon: item.icon || tt.icon,
                     bonuses: item.bonuses || [],
+                    isUse: tt.isUse,
                     stats: tt.stats || {},
                     gems: gems,
                     enchants: item.enchants_detail || []

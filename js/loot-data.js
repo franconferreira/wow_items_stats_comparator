@@ -13,12 +13,16 @@ const SEASON_RAID_DATA = {
                 {
                     name: "Ula'tek",
                     title: 'Último Jefe de Banda (Encounter 8)',
+                    npcId: 231450,
+                    bossIcon: 'achievement_boss_generalvezax',
                     patterns: ["Voracious Heart of Ula'tek", "Aqirbane Reliquary", "Chausses of Unbound Rancor", "Breath of Ula'tek", "Keeper's Seething Core", "Ula'tek"],
                     tierToken: 'Omnitoken de Tier (Cualquier ranura / Curio)'
                 },
                 {
                     name: 'The Coiled Altar',
                     title: 'Encuentro 7',
+                    npcId: 231448,
+                    bossIcon: 'inv_misc_altar_01',
                     patterns: ['Coiled Altar', 'Coiled'],
                     tierSlot: 'head',
                     tierToken: 'Token de Casco Tier'
@@ -26,6 +30,8 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'The Twin Fangs',
                     title: 'Encuentro 6',
+                    npcId: 231446,
+                    bossIcon: 'ability_hunter_snakeslash',
                     patterns: ['Twin Fangs', 'Fang'],
                     tierSlot: 'shoulder',
                     tierToken: 'Token de Hombreras Tier'
@@ -33,6 +39,8 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'Sszorak',
                     title: 'Encuentro 5',
+                    npcId: 231444,
+                    bossIcon: 'inv_misc_monstermushroom_02',
                     patterns: ["Apex Brute's Claw Ring", 'Sszorak'],
                     tierSlot: 'chest',
                     tierToken: 'Token de Pechera Tier'
@@ -40,6 +48,8 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'Vashnik the Malignant',
                     title: 'Encuentro 4',
+                    npcId: 231442,
+                    bossIcon: 'inv_potion_68',
                     patterns: ["Scaled Fiend's Warboots", "Vile Alchemist's Band", 'Vashnik'],
                     tierSlot: 'legs',
                     tierToken: 'Token de Pantalones Tier'
@@ -47,6 +57,8 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'The Lost Explorers',
                     title: 'Encuentro 3',
+                    npcId: 231440,
+                    bossIcon: 'inv_misc_spyglass_02',
                     patterns: ['Lost Explorers'],
                     tierSlot: 'hands',
                     tierToken: 'Token de Guantes Tier'
@@ -54,11 +66,15 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'Entombed Sentinels',
                     title: 'Encuentro 2',
+                    npcId: 231438,
+                    bossIcon: 'inv_helmet_147',
                     patterns: ['Entombed Sentinels', 'Entombed']
                 },
                 {
                     name: "Nek'zali the Soulcoiler",
                     title: 'Encuentro 1',
+                    npcId: 231436,
+                    bossIcon: 'inv_misc_head_troll_01',
                     patterns: ["Entombed Cultist's Sabatons", "Amani Summoning Shawl", "Nek'zali", "Soulcoiler"]
                 }
             ]
@@ -70,6 +86,8 @@ const SEASON_RAID_DATA = {
                 {
                     name: "Hex Lord Malacrass / Zul'jan",
                     title: 'Jefe Supremo',
+                    npcId: 24239,
+                    bossIcon: 'achievement_character_troll_male',
                     patterns: ["Zul'jin's Guillotine Technique", "Maze-roa, Warlord's Fury", "Silken Voodoo Drape", "Girdle of Toxic Regret", "Malacrass", "Zul'jin", "Zul'jan"]
                 }
             ]
@@ -81,16 +99,22 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'Nymrissa Wavecaller',
                     title: 'The Tidebound Grotto',
+                    npcId: 231420,
+                    bossIcon: 'inv_misc_head_naga_01',
                     patterns: ['Alluring Bubbleband', 'Swelling Sea Spaulders', 'Nymrissa', 'Wavecaller']
                 },
                 {
                     name: 'Rotmire',
                     title: 'Sporefall',
+                    npcId: 231422,
+                    bossIcon: 'spell_shadow_plaguecloud',
                     patterns: ['Rotmire', 'Sporefall']
                 },
                 {
                     name: "Kith'ix",
                     title: "The Unbinding of Kith'ix",
+                    npcId: 231424,
+                    bossIcon: 'inv_misc_head_dragon_black',
                     patterns: ["Kith'ix", 'Kithix']
                 }
             ]
@@ -302,6 +326,32 @@ const SEASON_DUNGEON_LOOT = [
     { id: 251224, name: "Hulking Handaxe", icon: "inv_axe_1h_dungeonharronir_c_01", slot: "weapon", armor: "universal", dungeon: "Voidscar Arena", boss: "Atroxus", stats: { 'Haste': 35, 'Mastery': 64 } },
     { id: 251231, name: "Singularity Slicer", icon: "inv_glaive_1h_dungeonharronir_c_01", slot: "weapon", armor: "universal", dungeon: "Voidscar Arena", boss: "Charonus", stats: { 'Critical Strike': 58, 'Haste': 41 } },
     { id: 251218, name: "Taz'Rah's Cosmic Edge", icon: "inv_sword_1h_domanaar_b_01", slot: "weapon", armor: "universal", dungeon: "Voidscar Arena", boss: "Taz'Rah", stats: { 'Haste': 58, 'Mastery': 41 } },
+
+    // --- TRINKETS (SEASON 2 DUNGEON DROPS) ---
+    // Active (On-Use)
+    { id: 159617, name: "Lustrous Golden Plumage", icon: "inv_feather_09", slot: "trinket", armor: "universal", dungeon: "Kings' Rest", boss: "The Golden Serpent", isUse: true, stats: { 'Versatility': 175 } },
+    { id: 159614, name: "Galecaller's Boon", icon: "inv_elemental_primal_air", slot: "trinket", armor: "universal", dungeon: "Temple of Sethraliss", boss: "Galvazzt", isUse: true, stats: { 'Mastery': 165 } },
+    { id: 159615, name: "Ignition Mage's Fuse", icon: "inv_misc_bomb_08", slot: "trinket", armor: "universal", dungeon: "Temple of Sethraliss", boss: "Galvazzt", isUse: true, stats: { 'Haste': 170 } },
+    { id: 159618, name: "Mchimba's Ritual Bandages", icon: "inv_fabric_bandage_02", slot: "trinket", armor: "universal", dungeon: "Kings' Rest", boss: "Mchimba the Embalmer", isUse: true, stats: { 'Mastery': 160 } },
+    { id: 159619, name: "Vessel of Skittering Shadows", icon: "inv_trinket_80_shadowpotion", slot: "trinket", armor: "universal", dungeon: "Kings' Rest", boss: "King Dazar", isUse: true, stats: { 'Critical Strike': 170 } },
+    { id: 251202, name: "Ziekket's Barbed Stinger", icon: "inv_misc_monsterhorn_04", slot: "trinket", armor: "universal", dungeon: "The Blinding Vale", boss: "Ziekket", isUse: true, stats: { 'Critical Strike': 165 } },
+    { id: 273789, name: "Rav'i's Toxic Censer", icon: "inv_misc_urn_01", slot: "trinket", armor: "universal", dungeon: "Altar of Fangs", boss: "Rav'i", isUse: true, stats: { 'Haste': 165 } },
+    { id: 251237, name: "Charonus' Singularity", icon: "spell_shadow_unstableaffliction_3", slot: "trinket", armor: "universal", dungeon: "Voidscar Arena", boss: "Charonus", isUse: true, stats: { 'Critical Strike': 175 } },
+    { id: 251156, name: "Nalorakk's Ferocious Rage", icon: "ability_druid_challangingroar", slot: "trinket", armor: "universal", dungeon: "Den of Nalorakk", boss: "The Hoardmonger", isUse: true, stats: { 'Versatility': 165 } },
+    { id: 251143, name: "Sinseared Voodoo Doll", icon: "inv_misc_head_troll_01", slot: "trinket", armor: "universal", dungeon: "Murder Row", boss: "Lithiel Cinderfury", isUse: true, stats: { 'Critical Strike': 145, 'Versatility': 95 } },
+
+    // Passive (Equip-Proc)
+    { id: 159623, name: "Dead-Eye Spyglass", icon: "inv_misc_spyglass_02", slot: "trinket", armor: "universal", dungeon: "Temple of Sethraliss", boss: "Merektha", isUse: false, stats: { 'Critical Strike': 170 } },
+    { id: 159620, name: "Conch of Dark Whispers", icon: "inv_misc_shell_02", slot: "trinket", armor: "universal", dungeon: "Temple of Sethraliss", boss: "Avatar of Sethraliss", isUse: false, stats: { 'Mastery': 175 } },
+    { id: 159616, name: "Gore-Crusted Butcher's Block", icon: "inv_misc_food_meat_raw_01", slot: "trinket", armor: "universal", dungeon: "Kings' Rest", boss: "Aka'ali the Conqueror", isUse: false, stats: { 'Haste': 170 } },
+    { id: 193757, name: "Ruby Whelp Shell", icon: "inv_egg_dragon_red", slot: "trinket", armor: "universal", dungeon: "Ruby Life Pools", boss: "Melidrussa Chillworn", isUse: false, stats: { 'Critical Strike': 175 } },
+    { id: 193710, name: "Kyrakka's Searing Embers", icon: "spell_fire_sealoffire", slot: "trinket", armor: "universal", dungeon: "Ruby Life Pools", boss: "Kyrakka and Erkhart Stormvein", isUse: false, stats: { 'Mastery': 170 } },
+    { id: 251201, name: "Ruia's Luminous Seed", icon: "inv_misc_herb_01", slot: "trinket", armor: "universal", dungeon: "The Blinding Vale", boss: "Lightwarden Ruia", isUse: false, stats: { 'Mastery': 175 } },
+    { id: 251203, name: "Spore-Infused Idol", icon: "inv_jewelry_trinket_02", slot: "trinket", armor: "universal", dungeon: "The Blinding Vale", boss: "Ikuzz the Light Hunter", isUse: false, stats: { 'Versatility': 170 } },
+    { id: 251236, name: "Atroxus' Pulsing Heart", icon: "inv_misc_organ_05", slot: "trinket", armor: "universal", dungeon: "Voidscar Arena", boss: "Atroxus", isUse: false, stats: { 'Haste': 175 } },
+    { id: 273788, name: "Fang of the Writhing Coil", icon: "inv_misc_monsterfang_01", slot: "trinket", armor: "universal", dungeon: "Altar of Fangs", boss: "The Writhing Coil", isUse: false, stats: { 'Critical Strike': 175 } },
+    { id: 251157, name: "Winter's Howling Totem", icon: "inv_misc_totem_01", slot: "trinket", armor: "universal", dungeon: "Den of Nalorakk", boss: "Sentinel of Winter", isUse: false, stats: { 'Mastery': 170 } },
+    { id: 251147, name: "Bladesorrow's Poisoned Flask", icon: "inv_potion_52", slot: "trinket", armor: "universal", dungeon: "Murder Row", boss: "Zaen Bladesorrow", isUse: false, stats: { 'Mastery': 165, 'Haste': 85 } }
 ];
 
 if (typeof window !== 'undefined') {

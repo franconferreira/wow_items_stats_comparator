@@ -54,8 +54,7 @@ window.toggleCollapse = toggleCollapse;
 
 function toggleAllSections(collapseAll) {
     const sections = [
-        { body: 'top10-gear-body', chevron: 'top10-gear-chevron', status: 'top10-gear-status' },
-        { body: 'raid-bosses-body', chevron: 'raid-bosses-chevron', status: 'raid-bosses-status' }
+        { body: 'top10-gear-body', chevron: 'top10-gear-chevron', status: 'top10-gear-status' }
     ];
 
     const collapseTxt = (typeof t === 'function') ? t('collapse') : 'Plegar';

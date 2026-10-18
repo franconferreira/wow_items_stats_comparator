@@ -230,6 +230,7 @@ async function handleSimCCompare() {
                 name: tt.name || 'Ítem',
                 icon: tt.icon,
                 ilvl: tt.ilvl || it.ilvl || 0,
+                isUse: tt.isUse,
                 stats: itemStats
             };
         }

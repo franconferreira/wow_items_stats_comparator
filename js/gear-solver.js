@@ -1,7 +1,8 @@
 /**
  * gear-solver.js
  * Combinatorial beam search solver to compute complementary Mythic+ dungeon packages
- * and the Óptimo (BiS) set taking into account Crafted gear and Raid loot.
+ * and the Óptimo (BiS) set taking into account realistic Top Crafted gear, Raid loot,
+ * and 1 On-Use + 1 Passive Trinket constraint.
  */
 
 function getCanonicalSlot(rawSlot) {
@@ -12,13 +13,120 @@ function getCanonicalSlot(rawSlot) {
     return s;
 }
 
-// Combinatorial Solver to find complementary packages (Mythic+ Dungeon Loot & Optimal BiS with Crafted and Raid gear)
+// Helper: Extract consensus enchants and socketed gems from Top 50 players
+function getConsensusEnchantsAndGems(top10Players) {
+    const gemCounts = new Map();
+    const enchantCountsBySlot = new Map();
+
+    (top10Players || []).forEach(p => {
+        Object.entries(p.itemDetails || {}).forEach(([slot, it]) => {
+            if (!it) return;
+            const canonical = getCanonicalSlot(slot);
+
+            // Gems
+            (it.gems || []).forEach(g => {
+                if (!g || !g.name) return;
+                const k = g.name;
+                if (!gemCounts.has(k)) {
+                    gemCounts.set(k, { name: g.name, icon: g.icon, id: g.id, count: 0 });
+                }
+                gemCounts.get(k).count++;
+            });
+
+            // Enchants
+            (it.enchants || []).forEach(e => {
+                if (!e || !e.name) return;
+                if (!enchantCountsBySlot.has(canonical)) {
+                    enchantCountsBySlot.set(canonical, new Map());
+                }
+                const slotEnchMap = enchantCountsBySlot.get(canonical);
+                if (!slotEnchMap.has(e.name)) {
+                    slotEnchMap.set(e.name, { name: e.name, icon: e.icon, id: e.id, count: 0 });
+                }
+                slotEnchMap.get(e.name).count++;
+            });
+        });
+    });
+
+    const sortedGems = Array.from(gemCounts.values()).sort((a, b) => b.count - a.count);
+    const topGem = sortedGems[0] || null;
+
+    // Parse secondary stats of top gem
+    const gemStats = {};
+    if (topGem) {
+        const mGems = topGem.name.matchAll(/(\d+)\s*(Crit|Vers|Haste|Mastery)/gi);
+        const gemStatMap = { 'crit': 'Critical Strike', 'vers': 'Versatility', 'haste': 'Haste', 'mastery': 'Mastery' };
+        for (const gm of mGems) {
+            const val = parseInt(gm[1], 10);
+            const key = gemStatMap[gm[2].toLowerCase()];
+            if (key) gemStats[key] = (gemStats[key] || 0) + val;
+        }
+    }
+    // Fallback if gem name didn't contain numeric regex
+    if (Object.keys(gemStats).length === 0 && topGem) {
+        gemStats['Mastery'] = 147;
+    }
+
+    const consensusEnchants = {};
+    enchantCountsBySlot.forEach((enchMap, slot) => {
+        const sorted = Array.from(enchMap.values()).sort((a, b) => b.count - a.count);
+        if (sorted.length > 0) {
+            consensusEnchants[slot] = sorted[0];
+        }
+    });
+
+    return {
+        topGem,
+        gemStats,
+        consensusEnchants
+    };
+}
+
+// Helper: Calculate globally popular crafted items across all Top 50 players
+function getGlobalTopCraftedItems(top10Players) {
+    const globalCraftedMap = new Map();
+    (top10Players || []).forEach(p => {
+        Object.entries(p.itemDetails || {}).forEach(([pSlot, it]) => {
+            if (!it || !it.item_id || !it.name) return;
+            const isCrafted = (it.bonuses || []).some(b => CRAFTED_BONUS_SET.has(b));
+            if (!isCrafted) return;
+            const canonical = getCanonicalSlot(pSlot);
+            if (!globalCraftedMap.has(it.item_id)) {
+                globalCraftedMap.set(it.item_id, {
+                    id: it.item_id,
+                    name: it.name,
+                    icon: it.icon,
+                    slot: canonical,
+                    ilvl: it.ilvl || 334,
+                    stats: it.stats || {},
+                    dungeon: 'Fabricación con Chispa',
+                    boss: 'Profesión',
+                    itemType: 'crafted',
+                    playerCount: 0
+                });
+            }
+            globalCraftedMap.get(it.item_id).playerCount++;
+        });
+    });
+
+    const sorted = Array.from(globalCraftedMap.values()).sort((a, b) => b.playerCount - a.playerCount);
+    // Requirement 1: Only items crafted by a significant number of players (at least 3 players or 8% of pool)
+    const threshold = Math.max(2, Math.floor(((top10Players?.length || 10) * 0.08)));
+    const popularCrafted = sorted.filter(it => it.playerCount >= threshold).slice(0, 5);
+    const validCraftedItemIds = new Set(popularCrafted.map(it => it.id));
+
+    return {
+        popularCrafted,
+        validCraftedItemIds
+    };
+}
+
+// Combinatorial Solver to find complementary packages (Mythic+ Dungeon Loot, Crafted & Optimal BiS with 1 Use + 1 Passive Trinket)
 function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, armorType, top10Players = [], seasonSlug = 'season-mn-2') {
     const openSlots = [];
     for (const [slotKey, it] of Object.entries(userItemsDetails)) {
         if (slotKey === 'shirt' || slotKey === 'tabard') continue;
-        // Never recommend trinkets in packages per user request
-        if (slotKey.startsWith('trinket')) continue;
+        // Trinkets are now fully unlockable / lockable
         if (!lockedSlots.has(slotKey)) {
             openSlots.push(slotKey);
         }
@@ -28,10 +136,10 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
         return { allCurrent: true, openSlots: [], pkg1: null, pkg2: null, pkgOptimal: null };
     }
 
-    // 1. Calculate base locked stats (include locked slots and user's equipped trinkets as fixed baseline)
+    // 1. Calculate base locked stats
     const lockedStats = { 'Critical Strike': 0, 'Haste': 0, 'Mastery': 0, 'Versatility': 0 };
     for (const [slotKey, it] of Object.entries(userItemsDetails)) {
-        if (lockedSlots.has(slotKey) || slotKey.startsWith('trinket')) {
+        if (lockedSlots.has(slotKey)) {
             if (it && it.stats) {
                 for (const [sName, sVal] of Object.entries(it.stats)) {
                     if (lockedStats[sName] !== undefined) {
@@ -40,6 +148,63 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                 }
             }
         }
+    }
+
+    // 2. Extract consensus gems, enchants & realistic top crafted items
+    const { topGem, gemStats, consensusEnchants } = getConsensusEnchantsAndGems(top10Players);
+    const { popularCrafted, validCraftedItemIds } = getGlobalTopCraftedItems(top10Players);
+
+    // Initial crafted items locked on the player
+    let initialCraftedCount = 0;
+    const initialCraftedCategories = new Set();
+    const initialCraftedIds = new Set();
+
+    lockedSlots.forEach(lSlot => {
+        const it = userItemsDetails ? userItemsDetails[lSlot] : null;
+        if (it) {
+            const isCrafted = (it.bonuses || []).some(b => CRAFTED_BONUS_SET.has(b));
+            if (isCrafted) {
+                initialCraftedCount++;
+                const lCanonical = getCanonicalSlot(lSlot);
+                initialCraftedCategories.add(lCanonical);
+                if (it.item_id) initialCraftedIds.add(it.item_id);
+            }
+        }
+    });
+
+    // Initial Trinket state: determine if locked trinkets are on-use or passive
+    let initialTrinketUse = 0;
+    let initialTrinketPassive = 0;
+
+    ['trinket1', 'trinket2'].forEach(tSlot => {
+        if (lockedSlots.has(tSlot)) {
+            const tItem = userItemsDetails[tSlot];
+            if (tItem) {
+                const isUse = tItem.isUse ?? (/(?:Use:|Uso:|Utilizar:)/i.test(tItem.name || ''));
+                if (isUse) {
+                    initialTrinketUse++;
+                } else {
+                    initialTrinketPassive++;
+                }
+            }
+        }
+    });
+
+    // Check crafted count cap from Top 50 (max 2 or 3)
+    let maxTopCrafted = 2;
+    if (top10Players && top10Players.length > 0) {
+        const playerCraftedCounts = top10Players.map(p => {
+            let count = 0;
+            Object.values(p.itemDetails || {}).forEach(it => {
+                if (it && (it.bonuses || []).some(b => CRAFTED_BONUS_SET.has(b))) {
+                    count++;
+                }
+            });
+            return count;
+        });
+        playerCraftedCounts.sort((a, b) => a - b);
+        const p90 = playerCraftedCounts[Math.floor(playerCraftedCounts.length * 0.9)] || 2;
+        maxTopCrafted = Math.min(3, Math.max(2, p90));
     }
 
     const formatPackage = (state) => {
@@ -59,50 +224,117 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
             totalStats: state.totalStats,
             pcts,
             score: state.score,
-            dungeonsMap
+            dungeonsMap,
+            consensusEnchants,
+            topGem,
+            gemStats
         };
     };
 
     const BEAM_WIDTH = 50;
 
-    // 2. Build candidate items list strictly from genuine Season 2 Mythic+ dungeon loot pool (for pkg1 & pkg2)
+    // 3. Build candidate items list for pkg1 & pkg2 (Season 2 Dungeon Loot + Realistic Top Crafted gear)
+    // Requirement 2: Allow player to also get top crafted items in Recomendado & Alternativo
+    // Requirement 5: Trinkets in Recomendado & Alternativo must be dungeon-only (no raid), 1 on-use + 1 passive
     const slotCandidates = [];
     for (const slotKey of openSlots) {
         const canonical = getCanonicalSlot(slotKey);
+        const candidates = [];
+        const seenIds = new Set();
+
+        // A. Add valid top crafted pieces for this slot (if any)
+        popularCrafted.filter(it => it.slot === canonical).forEach(it => {
+            if (!seenIds.has(it.id)) {
+                seenIds.add(it.id);
+                candidates.push({
+                    ...it,
+                    itemType: 'crafted',
+                    badgeText: 'CRAFT'
+                });
+            }
+        });
+
+        // B. Add seasonal dungeon loot
         let itemsForSlot = SEASON_DUNGEON_LOOT.filter(it => 
             it.slot === canonical && (it.armor === armorType || it.armor === 'universal')
         );
-
         if (itemsForSlot.length === 0) {
             itemsForSlot = SEASON_DUNGEON_LOOT.filter(it => it.slot === canonical);
         }
 
+        itemsForSlot.forEach(it => {
+            if (!seenIds.has(it.id)) {
+                seenIds.add(it.id);
+                candidates.push({
+                    ...it,
+                    itemType: 'dungeon',
+                    badgeText: 'M+'
+                });
+            }
+        });
+
         slotCandidates.push({
             slotKey: slotKey,
-            slotName: SLOT_NAMES_ES[slotKey] || slotKey,
-            candidates: itemsForSlot.map(it => ({
-                ...it,
-                itemType: 'dungeon',
-                badgeText: 'M+'
-            }))
+            slotName: (typeof SLOT_NAMES_ES !== 'undefined' && SLOT_NAMES_ES[slotKey]) ? SLOT_NAMES_ES[slotKey] : slotKey,
+            candidates
         });
     }
 
-    // 3. Evaluate dungeon packages using Beam Search
+    // 4. Evaluate dungeon & crafted packages using Beam Search
     let beam = [{
         items: [],
         totalStats: { ...lockedStats },
+        craftedCount: initialCraftedCount,
+        craftedCategories: new Set(initialCraftedCategories),
+        craftedIds: new Set(initialCraftedIds),
+        trinketUseCount: initialTrinketUse,
+        trinketPassiveCount: initialTrinketPassive,
         score: 0
     }];
 
     for (const slotObj of slotCandidates) {
         const nextBeam = [];
-        const topCandidates = slotObj.candidates.slice(0, 4);
+        const canonicalSlot = getCanonicalSlot(slotObj.slotKey);
+        const isTrinket = canonicalSlot === 'trinket';
+
         for (const state of beam) {
-            for (const item of topCandidates) {
+            for (const item of slotObj.candidates) {
+                const isItemCrafted = item.itemType === 'crafted';
+
+                // Prevent equipping duplicate item IDs
+                if (state.items.some(existing => existing.id === item.id)) {
+                    continue;
+                }
+
+                // Trinket Pairing Constraint: Exactly 1 on-use and 1 passive
+                if (isTrinket) {
+                    if (item.isUse && state.trinketUseCount >= 1) {
+                        continue;
+                    }
+                    if (!item.isUse && state.trinketPassiveCount >= 1) {
+                        continue;
+                    }
+                }
+
+                // Crafted Specific Constraints:
+                if (isItemCrafted) {
+                    if (state.craftedCount >= maxTopCrafted) continue;
+                    if (state.craftedIds.has(item.id)) continue;
+                    if (state.craftedCategories.has(canonicalSlot)) continue;
+                }
+
                 const nextStats = { ...state.totalStats };
                 for (const [sName, sVal] of Object.entries(item.stats || {})) {
                     if (nextStats[sName] !== undefined) nextStats[sName] += sVal;
+                }
+
+                // Add socket gem stats if slot is ring or neck (Requirement 3: gems affect stat balancing)
+                const isSocketSlot = canonicalSlot === 'finger' || canonicalSlot === 'neck';
+                if (isSocketSlot && topGem && gemStats) {
+                    const socketCount = (canonicalSlot === 'finger') ? 2 : 1;
+                    for (const [sName, sVal] of Object.entries(gemStats)) {
+                        if (nextStats[sName] !== undefined) nextStats[sName] += sVal * socketCount;
+                    }
                 }
 
                 const totalSec = Object.values(nextStats).reduce((a, b) => a + b, 0);
@@ -113,13 +345,51 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                     score += diff * diff;
                 }
 
+                const nextCraftedCategories = new Set(state.craftedCategories);
+                const nextCraftedIds = new Set(state.craftedIds);
+                let nextCraftedCount = state.craftedCount;
+                if (isItemCrafted) {
+                    nextCraftedCount++;
+                    nextCraftedCategories.add(canonicalSlot);
+                    nextCraftedIds.add(item.id);
+                }
+
+                const nextTrinketUse = state.trinketUseCount + (isTrinket && item.isUse ? 1 : 0);
+                const nextTrinketPassive = state.trinketPassiveCount + (isTrinket && !item.isUse ? 1 : 0);
+
                 nextBeam.push({
                     items: [...state.items, { ...item, targetSlot: slotObj.slotName, slotKey: slotObj.slotKey }],
                     totalStats: nextStats,
+                    craftedCount: nextCraftedCount,
+                    craftedCategories: nextCraftedCategories,
+                    craftedIds: nextCraftedIds,
+                    trinketUseCount: nextTrinketUse,
+                    trinketPassiveCount: nextTrinketPassive,
                     score
                 });
             }
         }
+
+        // Safety fallback if constraints filtered all items
+        if (nextBeam.length === 0) {
+            for (const state of beam) {
+                for (const item of slotObj.candidates) {
+                    if (item.itemType !== 'crafted') {
+                        nextBeam.push({
+                            items: [...state.items, { ...item, targetSlot: slotObj.slotName, slotKey: slotObj.slotKey }],
+                            totalStats: state.totalStats,
+                            craftedCount: state.craftedCount,
+                            craftedCategories: state.craftedCategories,
+                            craftedIds: state.craftedIds,
+                            trinketUseCount: state.trinketUseCount,
+                            trinketPassiveCount: state.trinketPassiveCount,
+                            score: state.score + 100
+                        });
+                    }
+                }
+            }
+        }
+
         nextBeam.sort((a, b) => a.score - b.score);
         beam = nextBeam.slice(0, BEAM_WIDTH);
     }
@@ -140,7 +410,10 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
         if (!pkg2 && beam.length > 1) pkg2 = formatPackage(beam[1]);
     }
 
-    // 4. Build candidate items list for "Óptimo" (Crafted + Raid + Dungeon)
+    // 5. Build candidate items list for "Óptimo" (Crafted + Raid + Dungeon)
+    // Requirement 1: Only genuinely popular crafted items (validCraftedItemIds)
+    // Requirement 5: In Óptimo, show the trinkets most used by Top 50, with 1 on-use + 1 passive
+    // Requirement 6: Boss portrait & Wowhead tooltip for raid bosses
     const optSlotCandidates = [];
     const raids = SEASON_RAID_DATA[seasonSlug] || SEASON_RAID_DATA['season-mn-2'] || [];
 
@@ -148,9 +421,10 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
         const canonical = getCanonicalSlot(slotKey);
         const candidates = [];
         const seenIds = new Set();
+        const isTrinket = canonical === 'trinket';
 
-        const craftedMap = new Map();
         const raidMap = new Map();
+        const topTrinketMap = new Map();
 
         (top10Players || []).forEach(p => {
             Object.entries(p.itemDetails || {}).forEach(([pSlot, it]) => {
@@ -160,41 +434,78 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                 const isCrafted = (it.bonuses || []).some(b => CRAFTED_BONUS_SET.has(b));
                 const isDungeon = SEASON_DUNGEON_LOOT.some(d => d.id === it.item_id);
 
-                if (isCrafted) {
-                    if (!craftedMap.has(it.item_id)) {
-                        craftedMap.set(it.item_id, {
-                            id: it.item_id,
-                            name: it.name,
-                            icon: it.icon,
-                            slot: canonical,
-                            ilvl: it.ilvl || 334,
-                            stats: it.stats || {},
-                            dungeon: 'Fabricación con Chispa',
-                            boss: 'Profesión',
-                            itemType: 'crafted',
-                            playerCount: 0
-                        });
-                    }
-                    craftedMap.get(it.item_id).playerCount++;
-                } else if (!isDungeon) {
-                    // Raid / Tier item
-                    if (!raidMap.has(it.item_id)) {
+                if (isTrinket) {
+                    // Trinket collection for Top 50
+                    if (!topTrinketMap.has(it.item_id)) {
                         let bossName = 'Jefe de Banda';
                         let raidName = 'Banda de Temporada';
+                        let bossNpcId = 231450;
+                        let bossIcon = 'achievement_boss_generalvezax';
+                        let isRaid = false;
+
                         for (const r of raids) {
                             for (const b of r.bosses) {
                                 if (b.patterns && b.patterns.some(pat => it.name.toLowerCase().includes(pat.toLowerCase()))) {
                                     bossName = b.name;
                                     raidName = r.raidName;
+                                    bossNpcId = b.npcId || bossNpcId;
+                                    bossIcon = b.bossIcon || bossIcon;
+                                    isRaid = true;
+                                    break;
+                                }
+                            }
+                            if (isRaid) break;
+                        }
+
+                        const dItem = SEASON_DUNGEON_LOOT.find(d => d.id === it.item_id);
+                        const isUse = (dItem && dItem.isUse !== undefined)
+                            ? dItem.isUse
+                            : (it.isUse ?? (/(?:Use:|Uso:|Utilizar:)/i.test(it.name || '')));
+
+                        topTrinketMap.set(it.item_id, {
+                            id: it.item_id,
+                            name: it.name,
+                            icon: it.icon,
+                            slot: 'trinket',
+                            ilvl: it.ilvl || 334,
+                            stats: it.stats || (dItem ? dItem.stats : {}),
+                            dungeon: isRaid ? raidName : (dItem ? dItem.dungeon : 'Mítica+'),
+                            boss: isRaid ? bossName : (dItem ? dItem.boss : 'Jefe de Mazmorra'),
+                            bossNpcId: isRaid ? bossNpcId : null,
+                            bossIcon: isRaid ? bossIcon : null,
+                            isUse: isUse,
+                            itemType: isRaid ? 'raid' : 'dungeon',
+                            playerCount: 0
+                        });
+                    }
+                    topTrinketMap.get(it.item_id).playerCount++;
+                } else if (!isCrafted && !isDungeon) {
+                    // Raid / Tier item
+                    if (!raidMap.has(it.item_id)) {
+                        let bossName = 'Jefe de Banda';
+                        let raidName = 'Banda de Temporada';
+                        let bossNpcId = 231450;
+                        let bossIcon = 'achievement_boss_generalvezax';
+
+                        for (const r of raids) {
+                            for (const b of r.bosses) {
+                                if (b.patterns && b.patterns.some(pat => it.name.toLowerCase().includes(pat.toLowerCase()))) {
+                                    bossName = b.name;
+                                    raidName = r.raidName;
+                                    bossNpcId = b.npcId || bossNpcId;
+                                    bossIcon = b.bossIcon || bossIcon;
                                     break;
                                 }
                                 if (b.tierSlot && b.tierSlot === canonical) {
                                     bossName = b.name;
                                     raidName = r.raidName;
+                                    bossNpcId = b.npcId || bossNpcId;
+                                    bossIcon = b.bossIcon || bossIcon;
                                     break;
                                 }
                             }
                         }
+
                         raidMap.set(it.item_id, {
                             id: it.item_id,
                             name: it.name,
@@ -204,6 +515,8 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                             stats: it.stats || {},
                             dungeon: raidName,
                             boss: bossName,
+                            bossNpcId: bossNpcId,
+                            bossIcon: bossIcon,
                             itemType: 'raid',
                             playerCount: 0
                         });
@@ -213,102 +526,88 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
             });
         });
 
-        // Top 2 crafted pieces for this slot
-        const sortedCrafted = Array.from(craftedMap.values()).sort((a, b) => b.playerCount - a.playerCount);
-        sortedCrafted.slice(0, 2).forEach(it => {
-            if (!seenIds.has(it.id)) {
-                seenIds.add(it.id);
-                candidates.push(it);
-            }
-        });
+        if (isTrinket) {
+            // For Trinkets: add Top 50 most used trinkets
+            const sortedTrinkets = Array.from(topTrinketMap.values()).sort((a, b) => b.playerCount - a.playerCount);
+            sortedTrinkets.slice(0, 8).forEach(it => {
+                if (!seenIds.has(it.id)) {
+                    seenIds.add(it.id);
+                    candidates.push(it);
+                }
+            });
 
-        // Top 3 raid pieces for this slot
-        const sortedRaid = Array.from(raidMap.values()).sort((a, b) => b.playerCount - a.playerCount);
-        sortedRaid.slice(0, 3).forEach(it => {
-            if (!seenIds.has(it.id)) {
-                seenIds.add(it.id);
-                candidates.push(it);
-            }
-        });
+            // Complement with seasonal dungeon trinkets
+            const dTrinkets = SEASON_DUNGEON_LOOT.filter(it => it.slot === 'trinket');
+            dTrinkets.slice(0, 8).forEach(it => {
+                if (!seenIds.has(it.id)) {
+                    seenIds.add(it.id);
+                    candidates.push({
+                        ...it,
+                        itemType: 'dungeon',
+                        playerCount: 0
+                    });
+                }
+            });
+        } else {
+            // A. Add ONLY popular crafted pieces matching this slot (Requirement 1)
+            popularCrafted.filter(it => it.slot === canonical).forEach(it => {
+                if (!seenIds.has(it.id)) {
+                    seenIds.add(it.id);
+                    candidates.push(it);
+                }
+            });
 
-        // Complement with top 3 seasonal dungeon drops
-        let dungeonItems = SEASON_DUNGEON_LOOT.filter(it => 
-            it.slot === canonical && (it.armor === armorType || it.armor === 'universal')
-        );
-        if (dungeonItems.length === 0) {
-            dungeonItems = SEASON_DUNGEON_LOOT.filter(it => it.slot === canonical);
+            // B. Top raid pieces for this slot
+            const sortedRaid = Array.from(raidMap.values()).sort((a, b) => b.playerCount - a.playerCount);
+            sortedRaid.slice(0, 4).forEach(it => {
+                if (!seenIds.has(it.id)) {
+                    seenIds.add(it.id);
+                    candidates.push(it);
+                }
+            });
+
+            // C. Complement with seasonal dungeon drops
+            let dungeonItems = SEASON_DUNGEON_LOOT.filter(it => 
+                it.slot === canonical && (it.armor === armorType || it.armor === 'universal')
+            );
+            if (dungeonItems.length === 0) {
+                dungeonItems = SEASON_DUNGEON_LOOT.filter(it => it.slot === canonical);
+            }
+            dungeonItems.slice(0, 3).forEach(it => {
+                if (!seenIds.has(it.id)) {
+                    seenIds.add(it.id);
+                    candidates.push({
+                        id: it.id,
+                        name: it.name,
+                        icon: it.icon,
+                        slot: canonical,
+                        ilvl: it.ilvl || 330,
+                        stats: it.stats || {},
+                        dungeon: it.dungeon,
+                        boss: it.boss,
+                        itemType: 'dungeon',
+                        playerCount: 0
+                    });
+                }
+            });
         }
-        dungeonItems.slice(0, 3).forEach(it => {
-            if (!seenIds.has(it.id)) {
-                seenIds.add(it.id);
-                candidates.push({
-                    id: it.id,
-                    name: it.name,
-                    icon: it.icon,
-                    slot: canonical,
-                    ilvl: it.ilvl || 330,
-                    stats: it.stats || {},
-                    dungeon: it.dungeon,
-                    boss: it.boss,
-                    itemType: 'dungeon',
-                    playerCount: 0
-                });
-            }
-        });
 
         optSlotCandidates.push({
             slotKey: slotKey,
-            slotName: SLOT_NAMES_ES[slotKey] || slotKey,
+            slotName: (typeof SLOT_NAMES_ES !== 'undefined' && SLOT_NAMES_ES[slotKey]) ? SLOT_NAMES_ES[slotKey] : slotKey,
             candidates: candidates
         });
     }
 
-    // 5. Evaluate "Óptimo" combination using Beam Search with Crafted Constraints
-    // Constraints:
-    // 1. No se puede tener 2 items crafteados del mismo tipo (2 dagas, 2 anillos).
-    // 2. Como mucho deberia tener solo 2 o 3 items crafteados (máx 2 a 3, los míticos tienen más ilvl).
-
-    // Determine crafted items already locked on the player
-    let initialCraftedCount = 0;
-    const initialCraftedCategories = new Set();
-    const initialCraftedIds = new Set();
-
-    lockedSlots.forEach(lSlot => {
-        const it = userItemsDetails ? userItemsDetails[lSlot] : null;
-        if (it) {
-            const isCrafted = (it.bonuses || []).some(b => CRAFTED_BONUS_SET.has(b));
-            if (isCrafted) {
-                initialCraftedCount++;
-                const lCanonical = getCanonicalSlot(lSlot);
-                initialCraftedCategories.add(lCanonical);
-                if (it.item_id) initialCraftedIds.add(it.item_id);
-            }
-        }
-    });
-
-    // Check crafted count distribution among Top 50 players (capped between 2 and 3)
-    let maxTopCrafted = 2;
-    if (top10Players && top10Players.length > 0) {
-        const playerCraftedCounts = top10Players.map(p => {
-            let count = 0;
-            Object.values(p.itemDetails || {}).forEach(it => {
-                if (it && (it.bonuses || []).some(b => CRAFTED_BONUS_SET.has(b))) {
-                    count++;
-                }
-            });
-            return count;
-        });
-        playerCraftedCounts.sort((a, b) => a - b);
-        const p90 = playerCraftedCounts[Math.floor(playerCraftedCounts.length * 0.9)] || 2;
-        maxTopCrafted = Math.min(3, Math.max(2, p90));
-    }
-
+    // 6. Evaluate "Óptimo" combination using Beam Search with Crafted & Trinket Constraints
     let optBeam = [{
         items: [],
         totalStats: { ...lockedStats },
         craftedCount: initialCraftedCount,
         craftedCategories: new Set(initialCraftedCategories),
         craftedIds: new Set(initialCraftedIds),
+        trinketUseCount: initialTrinketUse,
+        trinketPassiveCount: initialTrinketPassive,
         popularityBonus: 0,
         score: 0
     }];
@@ -316,29 +615,35 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
     for (const slotObj of optSlotCandidates) {
         const nextBeam = [];
         const canonicalSlot = getCanonicalSlot(slotObj.slotKey);
+        const isTrinket = canonicalSlot === 'trinket';
 
         for (const state of optBeam) {
             for (const item of slotObj.candidates) {
                 const isItemCrafted = item.itemType === 'crafted';
 
-                // Prevent equipping the exact same item ID twice in the entire set (e.g. 2 identical rings or weapons)
+                // Prevent equipping duplicate item IDs
                 if (state.items.some(existing => existing.id === item.id)) {
                     continue;
                 }
 
+                // Trinket Pairing Constraint: Exactly 1 on-use and 1 passive (Requirement 5)
+                if (isTrinket) {
+                    if (item.isUse && state.trinketUseCount >= 1) {
+                        continue;
+                    }
+                    if (!item.isUse && state.trinketPassiveCount >= 1) {
+                        continue;
+                    }
+                }
+
                 // Crafted Specific Constraints:
                 if (isItemCrafted) {
-                    // Rule 1: Max 2 or 3 crafted items in total
                     if (state.craftedCount >= maxTopCrafted) {
                         continue;
                     }
-
-                    // Rule 2: Cannot duplicate crafted item ID
                     if (state.craftedIds.has(item.id)) {
                         continue;
                     }
-
-                    // Rule 3: Cannot have 2 crafted items of the same type (e.g. 2 rings, 2 weapons/daggers)
                     if (state.craftedCategories.has(canonicalSlot)) {
                         continue;
                     }
@@ -349,6 +654,15 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                     if (nextStats[sName] !== undefined) nextStats[sName] += sVal;
                 }
 
+                // Add socket gem stats if slot is ring or neck (Requirement 3)
+                const isSocketSlot = canonicalSlot === 'finger' || canonicalSlot === 'neck';
+                if (isSocketSlot && topGem && gemStats) {
+                    const socketCount = (canonicalSlot === 'finger') ? 2 : 1;
+                    for (const [sName, sVal] of Object.entries(gemStats)) {
+                        if (nextStats[sName] !== undefined) nextStats[sName] += sVal * socketCount;
+                    }
+                }
+
                 const totalSec = Object.values(nextStats).reduce((a, b) => a + b, 0);
                 let statScore = 0;
                 for (const [st, target] of Object.entries(targetPcts)) {
@@ -357,7 +671,7 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                     statScore += diff * diff;
                 }
 
-                // Reward popular items worn by multiple Top 50 players (Tier pieces, top crafted & raid BiS)
+                // Reward popular items worn by multiple Top 50 players
                 const popularityRatio = (top10Players && top10Players.length > 0) ? (item.playerCount || 0) / top10Players.length : 0;
                 const cumBonus = (state.popularityBonus || 0) + (popularityRatio * 150);
                 const finalScore = Math.max(0, statScore - cumBonus);
@@ -365,12 +679,14 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                 const nextCraftedCategories = new Set(state.craftedCategories);
                 const nextCraftedIds = new Set(state.craftedIds);
                 let nextCraftedCount = state.craftedCount;
-
                 if (isItemCrafted) {
                     nextCraftedCount++;
                     nextCraftedCategories.add(canonicalSlot);
                     nextCraftedIds.add(item.id);
                 }
+
+                const nextTrinketUse = state.trinketUseCount + (isTrinket && item.isUse ? 1 : 0);
+                const nextTrinketPassive = state.trinketPassiveCount + (isTrinket && !item.isUse ? 1 : 0);
 
                 nextBeam.push({
                     items: [...state.items, { ...item, targetSlot: slotObj.slotName, slotKey: slotObj.slotKey }],
@@ -378,6 +694,8 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                     craftedCount: nextCraftedCount,
                     craftedCategories: nextCraftedCategories,
                     craftedIds: nextCraftedIds,
+                    trinketUseCount: nextTrinketUse,
+                    trinketPassiveCount: nextTrinketPassive,
                     popularityBonus: cumBonus,
                     score: finalScore
                 });
@@ -395,6 +713,8 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                             craftedCount: state.craftedCount,
                             craftedCategories: state.craftedCategories,
                             craftedIds: state.craftedIds,
+                            trinketUseCount: state.trinketUseCount,
+                            trinketPassiveCount: state.trinketPassiveCount,
                             popularityBonus: state.popularityBonus,
                             score: state.score + 100
                         });
@@ -414,11 +734,16 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
         openSlots,
         pkg1,
         pkg2,
-        pkgOptimal
+        pkgOptimal,
+        consensusEnchants,
+        topGem,
+        gemStats
     };
 }
 
 if (typeof window !== 'undefined') {
     window.getCanonicalSlot = getCanonicalSlot;
+    window.getConsensusEnchantsAndGems = getConsensusEnchantsAndGems;
+    window.getGlobalTopCraftedItems = getGlobalTopCraftedItems;
     window.findOptimalDungeonPackages = findOptimalDungeonPackages;
 }

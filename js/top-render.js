@@ -11,14 +11,12 @@ function switchTop10GearTab(tabKey) {
 
     const panes = {
         slots: document.getElementById('top10-pane-slots'),
-        crafted: document.getElementById('top10-pane-crafted'),
-        gems: document.getElementById('top10-pane-gems')
+        crafted: document.getElementById('top10-pane-crafted')
     };
 
     const buttons = {
         slots: document.getElementById('top10-tab-btn-slots'),
-        crafted: document.getElementById('top10-tab-btn-crafted'),
-        gems: document.getElementById('top10-tab-btn-gems')
+        crafted: document.getElementById('top10-tab-btn-crafted')
     };
 
     const titleEl = document.getElementById('top10-tabs-title');
@@ -65,15 +63,6 @@ function switchTop10GearTab(tabKey) {
             icon: (typeof getIcon === 'function') ? getIcon('hammer', 'w-4 h-4 text-blue-400') : '',
             iconWrapClass: 'w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0',
             activeBtnClass: 'bg-blue-600 text-white shadow-md'
-        },
-        gems: {
-            title: (typeof t === 'function') ? t('tabGemsTitle') : 'Gemas y Encantamientos en Común',
-            badge: (typeof t === 'function') ? t('socketsBadge') : 'Engarces & Encantos',
-            badgeClass: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
-            subtitle: (typeof t === 'function') ? t('tabGemsSubtitle') : 'Engarces de gemas más elegidos y consenso de encantamientos por cada pieza',
-            icon: (typeof getIcon === 'function') ? getIcon('gem', 'w-4 h-4 text-emerald-400') : '',
-            iconWrapClass: 'w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0',
-            activeBtnClass: 'bg-emerald-600 text-white shadow-md'
         }
     };
 
@@ -129,8 +118,6 @@ function renderResults(players, classSlug, specSlug = null) {
     renderConsensus(players, classSlug, exclude344);
     renderPopularItems(players);
     renderCraftedItems(players);
-    renderGemsAndEnchants(players);
-    renderRaidBossLoot(players, cachedSeasonSlug, classSlug);
     renderPlayerTable(players, exclude344);
 
     switchTop10GearTab(currentTop10GearTab);

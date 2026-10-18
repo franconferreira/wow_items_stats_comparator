@@ -80,12 +80,14 @@ async function fetchItemTooltip(itemId, ilvl, bonuses) {
         
         const ilvlMatch = tooltipHtml.match(/Item Level\s*(?:<!--ilvl-->)?\s*(\d+)/i);
         const resolvedIlvl = ilvlMatch ? parseInt(ilvlMatch[1], 10) : (parseInt(ilvl, 10) || 0);
+        const isUse = /(?:Use:|Uso:|Utilizar:)/i.test(tooltipHtml);
 
         const result = {
             name: data.name,
             icon: data.icon,
             quality: data.quality,
             ilvl: resolvedIlvl,
+            isUse: isUse,
             stats
         };
         
