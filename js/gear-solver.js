@@ -125,6 +125,56 @@ function getGlobalTopCraftedItems(top10Players) {
     };
 }
 
+// Helper: Find seasonal dungeon item with matching secondary stats (for Catalyst conversion of Tier pieces)
+function findMatchingDungeonItem(canonicalSlot, armorType, targetStats) {
+    if (typeof SEASON_DUNGEON_LOOT === 'undefined') return null;
+    let candidates = SEASON_DUNGEON_LOOT.filter(it => 
+        it.slot === canonicalSlot && (it.armor === armorType || it.armor === 'universal')
+    );
+    if (candidates.length === 0) {
+        candidates = SEASON_DUNGEON_LOOT.filter(it => it.slot === canonicalSlot);
+    }
+    if (candidates.length === 0) return null;
+
+    if (!targetStats || Object.keys(targetStats).length === 0) {
+        return candidates[0];
+    }
+
+    const targetStatKeys = Object.keys(targetStats).filter(k => targetStats[k] > 0);
+    targetStatKeys.sort((a, b) => targetStats[b] - targetStats[a]);
+
+    let bestItem = null;
+    let bestScore = -Infinity;
+
+    for (const item of candidates) {
+        const itemStatKeys = Object.keys(item.stats || {}).filter(k => item.stats[k] > 0);
+        let matchCount = 0;
+        let diffSum = 0;
+
+        for (const st of targetStatKeys) {
+            if (item.stats && item.stats[st]) {
+                matchCount++;
+                diffSum += Math.abs(item.stats[st] - targetStats[st]);
+            }
+        }
+
+        let score = matchCount * 1000 - diffSum;
+        if (targetStatKeys.length > 0 && itemStatKeys.length > 0 && targetStatKeys[0] === itemStatKeys[0]) {
+            score += 300;
+        }
+        if (matchCount === targetStatKeys.length && matchCount === itemStatKeys.length) {
+            score += 1500;
+        }
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestItem = item;
+        }
+    }
+
+    return bestItem;
+}
+
 // Combinatorial Solver to find complementary packages (Mythic+ Dungeon Loot, Crafted & Optimal BiS with 1 Use + 1 Passive Trinket)
 function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, armorType, top10Players = [], seasonSlug = 'season-mn-2') {
     const openSlots = [];
@@ -160,6 +210,7 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
 
     // Initial crafted items locked on the player
     let initialCraftedCount = 0;
+    let initialCraftedWeaponCount = 0;
     const initialCraftedCategories = new Set();
     const initialCraftedIds = new Set();
 
@@ -170,7 +221,11 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
             if (isCrafted) {
                 initialCraftedCount++;
                 const lCanonical = getCanonicalSlot(lSlot);
-                initialCraftedCategories.add(lCanonical);
+                if (lCanonical === 'weapon') {
+                    initialCraftedWeaponCount++;
+                } else {
+                    initialCraftedCategories.add(lCanonical);
+                }
                 if (it.item_id) initialCraftedIds.add(it.item_id);
             }
         }
@@ -289,6 +344,7 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
         items: [],
         totalStats: { ...lockedStats },
         craftedCount: initialCraftedCount,
+        craftedWeaponCount: initialCraftedWeaponCount,
         craftedCategories: new Set(initialCraftedCategories),
         craftedIds: new Set(initialCraftedIds),
         trinketUseCount: initialTrinketUse,
@@ -305,8 +361,8 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
             for (const item of slotObj.candidates) {
                 const isItemCrafted = item.itemType === 'crafted';
 
-                // Prevent equipping duplicate item IDs
-                if (state.items.some(existing => existing.id === item.id)) {
+                // Prevent equipping duplicate item IDs (except dual-wield weapons)
+                if (canonicalSlot !== 'weapon' && state.items.some(existing => existing.id === item.id)) {
                     continue;
                 }
 
@@ -320,11 +376,15 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                     }
                 }
 
-                // Crafted Specific Constraints:
+                // Crafted Specific Constraints: Allow up to 2 crafted weapons for dual-wield
                 if (isItemCrafted) {
                     if (state.craftedCount >= maxTopCrafted) continue;
-                    if (state.craftedIds.has(item.id)) continue;
-                    if (state.craftedCategories.has(canonicalSlot)) continue;
+                    if (canonicalSlot === 'weapon') {
+                        if ((state.craftedWeaponCount || 0) >= 2) continue;
+                    } else {
+                        if (state.craftedIds.has(item.id)) continue;
+                        if (state.craftedCategories.has(canonicalSlot)) continue;
+                    }
                 }
 
                 const nextStats = { ...state.totalStats };
@@ -352,9 +412,14 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                 const nextCraftedCategories = new Set(state.craftedCategories);
                 const nextCraftedIds = new Set(state.craftedIds);
                 let nextCraftedCount = state.craftedCount;
+                let nextCraftedWeaponCount = state.craftedWeaponCount || 0;
                 if (isItemCrafted) {
                     nextCraftedCount++;
-                    nextCraftedCategories.add(canonicalSlot);
+                    if (canonicalSlot === 'weapon') {
+                        nextCraftedWeaponCount++;
+                    } else {
+                        nextCraftedCategories.add(canonicalSlot);
+                    }
                     nextCraftedIds.add(item.id);
                 }
 
@@ -365,6 +430,7 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                     items: [...state.items, { ...item, targetSlot: slotObj.slotName, slotKey: slotObj.slotKey }],
                     totalStats: nextStats,
                     craftedCount: nextCraftedCount,
+                    craftedWeaponCount: nextCraftedWeaponCount,
                     craftedCategories: nextCraftedCategories,
                     craftedIds: nextCraftedIds,
                     trinketUseCount: nextTrinketUse,
@@ -383,6 +449,7 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                             items: [...state.items, { ...item, targetSlot: slotObj.slotName, slotKey: slotObj.slotKey }],
                             totalStats: state.totalStats,
                             craftedCount: state.craftedCount,
+                            craftedWeaponCount: state.craftedWeaponCount || 0,
                             craftedCategories: state.craftedCategories,
                             craftedIds: state.craftedIds,
                             trinketUseCount: state.trinketUseCount,
@@ -428,6 +495,7 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
         const isTrinket = canonical === 'trinket';
 
         const raidMap = new Map();
+        const catalystMap = new Map();
         const topTrinketMap = new Map();
 
         (top10Players || []).forEach(p => {
@@ -501,82 +569,64 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                     }
                     topTrinketMap.get(it.item_id).playerCount++;
                 } else if (!isCrafted && !isDungeon) {
-                    // Raid / Tier item
-                    if (!raidMap.has(it.item_id)) {
-                        let bossName = 'Jefe de Banda';
-                        let raidName = 'Banda de Temporada';
-                        let bossTitle = '';
-                        let bossIcon = 'inv_misc_head_dragon_black';
-                        let bossNpcId = null;
-                        let bossSlug = '';
-                        let bossImage = null;
-                        let matched = false;
+                    // Check if item drops directly from a raid boss pattern
+                    let matchedBoss = null;
+                    let matchedRaid = null;
 
-                        for (const r of raids) {
-                            // Pass 1: exact item name pattern matching
-                            for (const b of r.bosses) {
-                                if (b.patterns && b.patterns.some(pat => it.name.toLowerCase().includes(pat.toLowerCase()))) {
-                                    bossName = b.name;
-                                    bossTitle = b.title || '';
-                                    raidName = r.raidName;
-                                    bossIcon = b.bossIcon || bossIcon;
-                                    bossNpcId = b.npcId || null;
-                                    bossSlug = b.slug || '';
-                                    bossImage = b.bossImage || null;
-                                    matched = true;
-                                    break;
-                                }
+                    for (const r of raids) {
+                        for (const b of r.bosses) {
+                            if (b.patterns && b.patterns.some(pat => it.name.toLowerCase().includes(pat.toLowerCase()))) {
+                                matchedBoss = b;
+                                matchedRaid = r;
+                                break;
                             }
-                            if (matched) break;
-
-                            // Pass 2: tierSlot matching for Tier set tokens and pieces
-                            for (const b of r.bosses) {
-                                if (b.tierSlot && b.tierSlot === canonical) {
-                                    bossName = b.name;
-                                    bossTitle = b.title || '';
-                                    raidName = r.raidName;
-                                    bossIcon = b.bossIcon || bossIcon;
-                                    bossNpcId = b.npcId || null;
-                                    bossSlug = b.slug || '';
-                                    bossImage = b.bossImage || null;
-                                    matched = true;
-                                    break;
-                                }
-                            }
-                            if (matched) break;
                         }
-
-                        // Pass 3: Fallback for any other raid drop in Season 2: map to the flagship raid boss (Ula'tek)
-                        if (!matched && raids.length > 0) {
-                            const flagship = raids[0].bosses[0];
-                            bossName = flagship.name;
-                            bossTitle = flagship.title || '';
-                            raidName = raids[0].raidName;
-                            bossIcon = flagship.bossIcon || bossIcon;
-                            bossNpcId = flagship.npcId || null;
-                            bossSlug = flagship.slug || '';
-                            bossImage = flagship.bossImage || null;
-                        }
-
-                        raidMap.set(it.item_id, {
-                            id: it.item_id,
-                            name: (typeof cleanWoWString === 'function') ? cleanWoWString(it.name) : it.name,
-                            icon: it.icon,
-                            slot: canonical,
-                            ilvl: it.ilvl || 334,
-                            stats: it.stats || {},
-                            dungeon: raidName,
-                            boss: bossName,
-                            bossTitle: bossTitle,
-                            bossIcon: bossIcon,
-                            bossNpcId: bossNpcId,
-                            bossSlug: bossSlug,
-                            bossImage: bossImage,
-                            itemType: 'raid',
-                            playerCount: 0
-                        });
+                        if (matchedBoss) break;
                     }
-                    raidMap.get(it.item_id).playerCount++;
+
+                    if (matchedBoss) {
+                        // Direct raid boss drop
+                        if (!raidMap.has(it.item_id)) {
+                            raidMap.set(it.item_id, {
+                                id: it.item_id,
+                                name: (typeof cleanWoWString === 'function') ? cleanWoWString(it.name) : it.name,
+                                icon: it.icon,
+                                slot: canonical,
+                                ilvl: it.ilvl || 334,
+                                stats: it.stats || {},
+                                dungeon: matchedRaid.raidName,
+                                boss: matchedBoss.name,
+                                bossTitle: matchedBoss.title || '',
+                                bossIcon: matchedBoss.bossIcon || 'inv_misc_head_dragon_black',
+                                bossNpcId: matchedBoss.npcId || null,
+                                bossSlug: matchedBoss.slug || '',
+                                bossImage: matchedBoss.bossImage || null,
+                                itemType: 'raid',
+                                playerCount: 0
+                            });
+                        }
+                        raidMap.get(it.item_id).playerCount++;
+                    } else if (['head', 'shoulder', 'chest', 'hands', 'legs'].includes(canonical)) {
+                        // Tier set piece that does not drop directly from a raid boss!
+                        // Requirement 3: Use the dungeon item with matching stats and mark it as catalyzed
+                        const dMatch = findMatchingDungeonItem(canonical, armorType, it.stats);
+                        if (dMatch) {
+                            if (!catalystMap.has(dMatch.id)) {
+                                catalystMap.set(dMatch.id, {
+                                    ...dMatch,
+                                    ilvl: it.ilvl || 334,
+                                    isCatalyst: true,
+                                    catalystTargetName: (typeof cleanWoWString === 'function') ? cleanWoWString(it.name) : it.name,
+                                    catalystTargetIcon: it.icon,
+                                    catalystTargetId: it.item_id,
+                                    itemType: 'catalyst',
+                                    badgeText: 'CATALIZAR',
+                                    playerCount: 0
+                                });
+                            }
+                            catalystMap.get(dMatch.id).playerCount++;
+                        }
+                    }
                 }
             });
         });
@@ -612,7 +662,7 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                 }
             });
 
-            // B. Top raid pieces for this slot
+            // B. Top raid pieces for this slot (genuine boss drops)
             const sortedRaid = Array.from(raidMap.values()).sort((a, b) => b.playerCount - a.playerCount);
             sortedRaid.slice(0, 4).forEach(it => {
                 if (!seenIds.has(it.id)) {
@@ -621,7 +671,16 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                 }
             });
 
-            // C. Complement with seasonal dungeon drops
+            // C. Catalyzed Tier set pieces from seasonal dungeons (Requirement 3)
+            const sortedCatalyst = Array.from(catalystMap.values()).sort((a, b) => b.playerCount - a.playerCount);
+            sortedCatalyst.slice(0, 3).forEach(it => {
+                if (!seenIds.has(it.id)) {
+                    seenIds.add(it.id);
+                    candidates.push(it);
+                }
+            });
+
+            // D. Complement with seasonal dungeon drops
             let dungeonItems = SEASON_DUNGEON_LOOT.filter(it => 
                 it.slot === canonical && (it.armor === armorType || it.armor === 'universal')
             );
@@ -659,6 +718,7 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
         items: [],
         totalStats: { ...lockedStats },
         craftedCount: initialCraftedCount,
+        craftedWeaponCount: initialCraftedWeaponCount,
         craftedCategories: new Set(initialCraftedCategories),
         craftedIds: new Set(initialCraftedIds),
         trinketUseCount: initialTrinketUse,
@@ -676,8 +736,8 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
             for (const item of slotObj.candidates) {
                 const isItemCrafted = item.itemType === 'crafted';
 
-                // Prevent equipping duplicate item IDs
-                if (state.items.some(existing => existing.id === item.id)) {
+                // Prevent equipping duplicate item IDs (except dual-wield weapons)
+                if (canonicalSlot !== 'weapon' && state.items.some(existing => existing.id === item.id)) {
                     continue;
                 }
 
@@ -691,16 +751,20 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                     }
                 }
 
-                // Crafted Specific Constraints:
+                // Crafted Specific Constraints: Allow up to 2 crafted weapons
                 if (isItemCrafted) {
                     if (state.craftedCount >= maxTopCrafted) {
                         continue;
                     }
-                    if (state.craftedIds.has(item.id)) {
-                        continue;
-                    }
-                    if (state.craftedCategories.has(canonicalSlot)) {
-                        continue;
+                    if (canonicalSlot === 'weapon') {
+                        if ((state.craftedWeaponCount || 0) >= 2) continue;
+                    } else {
+                        if (state.craftedIds.has(item.id)) {
+                            continue;
+                        }
+                        if (state.craftedCategories.has(canonicalSlot)) {
+                            continue;
+                        }
                     }
                 }
 
@@ -728,15 +792,20 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
 
                 // Reward popular items worn by multiple Top 50 players
                 const popularityRatio = (top10Players && top10Players.length > 0) ? (item.playerCount || 0) / top10Players.length : 0;
-                const cumBonus = (state.popularityBonus || 0) + (popularityRatio * 150);
-                const finalScore = Math.max(0, statScore - cumBonus);
+                const cumBonus = (state.popularityBonus || 0) + (popularityRatio * 800);
+                const finalScore = statScore - cumBonus;
 
                 const nextCraftedCategories = new Set(state.craftedCategories);
                 const nextCraftedIds = new Set(state.craftedIds);
                 let nextCraftedCount = state.craftedCount;
+                let nextCraftedWeaponCount = state.craftedWeaponCount || 0;
                 if (isItemCrafted) {
                     nextCraftedCount++;
-                    nextCraftedCategories.add(canonicalSlot);
+                    if (canonicalSlot === 'weapon') {
+                        nextCraftedWeaponCount++;
+                    } else {
+                        nextCraftedCategories.add(canonicalSlot);
+                    }
                     nextCraftedIds.add(item.id);
                 }
 
@@ -747,6 +816,7 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                     items: [...state.items, { ...item, targetSlot: slotObj.slotName, slotKey: slotObj.slotKey }],
                     totalStats: nextStats,
                     craftedCount: nextCraftedCount,
+                    craftedWeaponCount: nextCraftedWeaponCount,
                     craftedCategories: nextCraftedCategories,
                     craftedIds: nextCraftedIds,
                     trinketUseCount: nextTrinketUse,
@@ -766,6 +836,7 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                             items: [...state.items, { ...item, targetSlot: slotObj.slotName, slotKey: slotObj.slotKey }],
                             totalStats: state.totalStats,
                             craftedCount: state.craftedCount,
+                            craftedWeaponCount: state.craftedWeaponCount || 0,
                             craftedCategories: state.craftedCategories,
                             craftedIds: state.craftedIds,
                             trinketUseCount: state.trinketUseCount,
@@ -800,5 +871,6 @@ if (typeof window !== 'undefined') {
     window.getCanonicalSlot = getCanonicalSlot;
     window.getConsensusEnchantsAndGems = getConsensusEnchantsAndGems;
     window.getGlobalTopCraftedItems = getGlobalTopCraftedItems;
+    window.findMatchingDungeonItem = findMatchingDungeonItem;
     window.findOptimalDungeonPackages = findOptimalDungeonPackages;
 }

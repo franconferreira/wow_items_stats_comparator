@@ -181,8 +181,8 @@ function renderConsensus(players, classSlug, exclude344 = false) {
                 seg.style.backgroundColor = STAT_COLORS[st].color;
                 seg.className = 'h-full transition-all duration-500 relative group flex items-center justify-center text-xs font-bold text-black';
                 seg.title = `${sName}: ${pct}% (${(typeof t === 'function') ? t('top50Avg') : 'Promedio'}: ${averages[st]})`;
-                if (parseFloat(pct) > 12) {
-                    seg.textContent = `${sName} ${pct}%`;
+                if (parseFloat(pct) >= 3) {
+                    seg.textContent = `${pct}%`;
                 }
                 distBar.appendChild(seg);
             }
@@ -800,7 +800,6 @@ function renderPlayerTable(players, exclude344 = false) {
                     </div>
                 </div>
             </td>
-            <td class="py-3 px-4 font-semibold text-gray-300">${p.spec}</td>
             <td class="py-3 px-4">
                 <span class="font-bold text-orange-400">${p.score != null ? Number(p.score).toFixed(1) : '—'}</span>
             </td>
@@ -875,7 +874,7 @@ function renderPlayerTable(players, exclude344 = false) {
             : `${excludedItems} ítems ilvl 344 excluidos del cálculo`;
 
         gearRow.innerHTML = `
-            <td colspan="10" class="p-4">
+            <td colspan="9" class="p-4">
                 <div class="flex items-center justify-between mb-2">
                     <div class="text-xs font-bold uppercase tracking-wider text-gray-400">${gearHeading}</div>
                     ${exclude344 && excludedItems > 0 ? `<span class="text-[11px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">${excludedNotice}</span>` : ''}

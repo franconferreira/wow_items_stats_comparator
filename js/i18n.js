@@ -94,6 +94,13 @@ const TRANSLATIONS = {
         boss: 'Jefe',
         raid: 'Banda',
         dungeonMPlus: 'Mazmorra M+',
+        catalyst: 'Catalizar',
+        catalystBadge: 'CATALIZAR',
+        catalystTier: 'Catalizar en Tier Set',
+        catalystTooltip: 'Catalizador de Tier: Dropea en {dungeon} ({boss}) y se cataliza en Tier Set',
+        andCatalyzedInto: 'y se cataliza en Tier Set',
+        enchantTitle: 'Encanto',
+        gemTitle: 'Gema',
 
         // Top 50 Tab Section
         tabSlotsTitle: 'Ítems Más Elegidos por Ranura',
@@ -250,6 +257,13 @@ const TRANSLATIONS = {
         boss: 'Boss',
         raid: 'Raid',
         dungeonMPlus: 'M+ Dungeon',
+        catalyst: 'Catalyze',
+        catalystBadge: 'CATALYST',
+        catalystTier: 'Catalyze into Tier Set',
+        catalystTooltip: 'Tier Catalyst: Drops in {dungeon} ({boss}) and is catalyzed into Tier Set',
+        andCatalyzedInto: 'and is catalyzed into Tier Set',
+        enchantTitle: 'Enchant',
+        gemTitle: 'Gem',
 
         // Top 50 Tab Section
         tabSlotsTitle: 'Most Popular Items by Slot',

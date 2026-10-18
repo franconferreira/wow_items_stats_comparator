@@ -165,14 +165,14 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         if (parseFloat(uPct) > 0) {
             userBarHtml += `
                 <div style="width: ${uPct}%; background-color: ${color};" class="h-full flex items-center justify-center text-[11px] font-bold text-black" title="${typeof t === 'function' ? t('yourCharacter') : 'Tu'} ${name}: ${uPct}% (${uStats[st]})">
-                    ${parseFloat(uPct) > 12 ? `${name} ${uPct}%` : ''}
+                    ${parseFloat(uPct) >= 3 ? `${uPct}%` : ''}
                 </div>
             `;
         }
         if (parseFloat(aPct) > 0) {
             top10BarHtml += `
                 <div style="width: ${aPct}%; background-color: ${color};" class="h-full flex items-center justify-center text-[11px] font-bold text-black" title="${typeof t === 'function' ? t('top50Avg') : 'Top 50'} ${name}: ${aPct}% (${avgStats[st]})">
-                    ${parseFloat(aPct) > 12 ? `${name} ${aPct}%` : ''}
+                    ${parseFloat(aPct) >= 3 ? `${aPct}%` : ''}
                 </div>
             `;
         }
@@ -281,7 +281,11 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         const canonical = (typeof getCanonicalSlot === 'function') ? getCanonicalSlot(slotKey) : slotKey;
         const rawEnch = consensusEnchants ? consensusEnchants[canonical] : null;
         const enchName = rawEnch ? ((typeof cleanWoWString === 'function') ? cleanWoWString(rawEnch.name) : rawEnch.name) : '';
-        const slotEnch = rawEnch ? { ...rawEnch, name: enchName } : null;
+        let enchDisplayName = enchName;
+        if (canonical === 'finger' && enchDisplayName) {
+            enchDisplayName = enchDisplayName.replace(/^(?:Enchant Ring\s*-\s*|Encantar anillo\s*[:\-]\s*)/i, '').trim();
+        }
+        const slotEnch = rawEnch ? { ...rawEnch, name: enchDisplayName, fullName: enchName } : null;
 
         const isSocketSlot = canonical === 'finger' || canonical === 'neck';
         const rawGem = (isSocketSlot && topGem) ? topGem : null;
@@ -289,23 +293,23 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         const slotGem = rawGem ? { ...rawGem, name: gemName } : null;
 
         const gemEnchantBadgesHtml = (slotEnch || slotGem) ? `
-            <div class="flex items-center gap-1.5 flex-wrap min-h-[18px]">
+            <div class="flex items-center gap-1 min-w-0 overflow-hidden whitespace-nowrap min-h-[18px]">
                 ${slotEnch ? `
-                    <span class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/70 border border-emerald-500/30 text-emerald-300 font-medium truncate" title="Encanto: ${slotEnch.name}">
-                        <span class="text-[9px]">📜</span>
-                        <span class="truncate max-w-[130px]">${slotEnch.name}</span>
+                    <span class="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/70 border border-emerald-500/30 text-emerald-300 font-medium min-w-0 shrink truncate" title="${typeof t === 'function' ? t('enchantTitle') : 'Encanto'}: ${slotEnch.fullName || slotEnch.name}">
+                        <span class="text-[9px] shrink-0">📜</span>
+                        <span class="truncate max-w-[95px]">${slotEnch.name}</span>
                     </span>
                 ` : ''}
                 ${slotGem ? `
-                    <span class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-purple-950/70 border border-purple-500/30 text-purple-300 font-medium truncate" title="Gema: ${slotGem.name}">
-                        <span class="text-[9px]">💎</span>
-                        <span class="truncate max-w-[130px]">${slotGem.name}</span>
+                    <span class="inline-flex items-center gap-0.5 text-[9px] px-1.5 py-0.5 rounded bg-purple-950/70 border border-purple-500/30 text-purple-300 font-medium min-w-0 shrink truncate" title="${typeof t === 'function' ? t('gemTitle') : 'Gema'}: ${slotGem.name}">
+                        <span class="text-[9px] shrink-0">💎</span>
+                        <span class="truncate max-w-[95px]">${slotGem.name}</span>
                     </span>
                 ` : ''}
             </div>
         ` : '';
 
-        // If viewing a package tab and this slot is a recommended dungeon drop / crafted / raid
+        // If viewing a package tab and this slot is a recommended dungeon drop / crafted / raid / catalyst
         if (selectedPkg && pkgItemsBySlot[slotKey]) {
             const dropItem = pkgItemsBySlot[slotKey];
             const dropIlvl = dropItem.ilvl || (activeTab === 'optimal' ? 334 : 330);
@@ -316,10 +320,20 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
             const localizedBoss = (typeof getLocalizedBossName === 'function') ? getLocalizedBossName(dropItem.boss) : dropItem.boss;
             const isOptimal = activeTab === 'optimal';
             const isPkg2 = activeTab === 'pkg2';
+            const isCatalyst = dropItem.isCatalyst || dropItem.itemType === 'catalyst';
 
             let accentBorder, accentColor, badgeBorder, badgeText, pinBg, pinIcon, pinTitle;
 
-            if (dropItem.itemType === 'crafted') {
+            if (isCatalyst) {
+                accentBorder = 'border-purple-500/50 bg-purple-950/20 hover:border-purple-400';
+                accentColor = 'text-purple-400';
+                badgeBorder = 'border-purple-500/40 text-purple-300';
+                badgeText = 'CATALIZAR';
+                pinBg = 'border-purple-500/40 bg-purple-950/80 text-purple-300';
+                pinIcon = (typeof getIcon === 'function') ? getIcon('sparkles', 'w-3.5 h-3.5 text-purple-300') : '✨';
+                const targetText = dropItem.catalystTargetName ? ` (${dropItem.catalystTargetName})` : '';
+                pinTitle = `${typeof t === 'function' ? t('catalystTier') : 'Catalizador de Tier'}: ${typeof t === 'function' ? t('dropIn') : 'Dropea en'} ${localizedDungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${localizedBoss}) ${typeof t === 'function' ? t('andCatalyzedInto') : 'y se cataliza en Tier Set'}${targetText}`;
+            } else if (dropItem.itemType === 'crafted') {
                 accentBorder = 'border-blue-500/50 bg-blue-950/20 hover:border-blue-400';
                 accentColor = 'text-blue-400';
                 badgeBorder = 'border-blue-500/40 text-blue-300';
@@ -352,11 +366,13 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                 pinTitle = `${typeof t === 'function' ? t('dropIn') : 'Dropea en'} ${localizedDungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${localizedBoss})`;
             }
 
-            const imgBorder = dropItem.itemType === 'crafted'
-                ? 'border-blue-400/80 shadow-[0_0_8px_rgba(59,130,246,0.3)]'
-                : (dropItem.itemType === 'raid'
-                    ? 'border-red-400/80 shadow-[0_0_8px_rgba(239,68,68,0.3)]'
-                    : (isOptimal ? 'border-purple-400/80 shadow-[0_0_8px_rgba(168,85,247,0.3)]' : (isPkg2 ? 'border-amber-400/80 shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 'border-cyan-400/80 shadow-[0_0_8px_rgba(34,211,238,0.3)]')));
+            const imgBorder = isCatalyst
+                ? 'border-purple-400/80 shadow-[0_0_8px_rgba(168,85,247,0.3)]'
+                : (dropItem.itemType === 'crafted'
+                    ? 'border-blue-400/80 shadow-[0_0_8px_rgba(59,130,246,0.3)]'
+                    : (dropItem.itemType === 'raid'
+                        ? 'border-red-400/80 shadow-[0_0_8px_rgba(239,68,68,0.3)]'
+                        : (isOptimal ? 'border-purple-400/80 shadow-[0_0_8px_rgba(168,85,247,0.3)]' : (isPkg2 ? 'border-amber-400/80 shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 'border-cyan-400/80 shadow-[0_0_8px_rgba(34,211,238,0.3)]'))));
 
             // Right action element: for raid items, display verified boss portrait with authentic Wowhead popup on hover
             let rightActionHtml = '';
@@ -386,9 +402,9 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
 
             const badgesLine = gemEnchantBadgesHtml || `
                 <div class="flex items-center gap-1.5 truncate min-h-[18px]">
-                    <span class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-gray-800/80 border border-gray-700/50 text-gray-400 font-medium truncate">
-                        <span class="w-1.5 h-1.5 rounded-full ${dropItem.itemType === 'raid' ? 'bg-red-400' : (dropItem.itemType === 'crafted' ? 'bg-blue-400' : 'bg-cyan-400')}"></span>
-                        <span>${dropItem.itemType === 'raid' ? (typeof t === 'function' ? t('raid') : 'Banda') : (dropItem.itemType === 'crafted' ? (typeof t === 'function' ? t('sparkCraft') : 'Crafteo') : (typeof t === 'function' ? t('dungeonMPlus') : 'Mazmorra M+'))}</span>
+                    <span class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded ${isCatalyst ? 'bg-purple-950/80 border border-purple-500/40 text-purple-300' : 'bg-gray-800/80 border border-gray-700/50 text-gray-400'} font-medium truncate">
+                        <span class="w-1.5 h-1.5 rounded-full ${isCatalyst ? 'bg-purple-400' : (dropItem.itemType === 'raid' ? 'bg-red-400' : (dropItem.itemType === 'crafted' ? 'bg-blue-400' : 'bg-cyan-400'))}"></span>
+                        <span>${isCatalyst ? (typeof t === 'function' ? t('catalystTier') : 'Catalizar en Tier Set') : (dropItem.itemType === 'raid' ? (typeof t === 'function' ? t('raid') : 'Banda') : (dropItem.itemType === 'crafted' ? (typeof t === 'function' ? t('sparkCraft') : 'Crafteo') : (typeof t === 'function' ? t('dungeonMPlus') : 'Mazmorra M+')))}</span>
                     </span>
                 </div>
             `;
