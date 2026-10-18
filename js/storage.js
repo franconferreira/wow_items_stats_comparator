@@ -164,6 +164,7 @@ function loadSimCAnalysisFromStorage() {
 }
 
 function showRestoredDataBadge(timestamp) {
+    window._lastRestoredTimestamp = timestamp;
     const badge = document.getElementById('restored-session-badge');
     if (!badge) return;
 
@@ -192,6 +193,7 @@ function showRestoredDataBadge(timestamp) {
 }
 
 function clearSavedAnalysis() {
+    window._lastRestoredTimestamp = null;
     try {
         localStorage.removeItem('wow_top10_analysis_cache');
         localStorage.removeItem('wow_simc_analysis_cache');

@@ -141,6 +141,21 @@ const TRANSLATIONS = {
         agoMin: 'hace {n} min',
         agoH: 'hace {n} h',
 
+        // Additional UI keys
+        season2Piece: 'Temporada 2 • Actual',
+        season1Piece: 'Temporada 1 • Previa',
+        noEnchantReq: 'Sin encanto requerido',
+        raidBoss: 'Jefe de Banda',
+        raidLootS2: 'Loot de Banda • Temporada 2',
+        viewGear: 'Ver Equipo',
+        topTrinkets: 'Abalorios Más Elegidos (Trinkets)',
+        topWeapons: 'Armas Más Elegidas (Weapons)',
+        topRings: 'Anillos Más Elegidos (Rings)',
+        weaponsSlotHeader: 'Armas • Ranuras Principales',
+        projectedIlvl: 'Nivel de Objeto Proyectado',
+        avgIlvl: 'Nivel de Objeto Medio',
+        noSecondaryStats: 'Sin stats secundarios',
+
         // Footer
         footerData: 'Datos provistos en tiempo real por <a href="https://raider.io" target="_blank" class="text-amber-400 hover:underline">Raider.IO</a> y tooltips de <a href="https://wowhead.com" target="_blank" class="text-yellow-400 hover:underline">Wowhead</a>.',
         footerBlizzard: 'World of Warcraft® es una marca registrada de Blizzard Entertainment.'
@@ -282,6 +297,21 @@ const TRANSLATIONS = {
         agoMin: '{n} min ago',
         agoH: '{n} h ago',
 
+        // Additional UI keys
+        season2Piece: 'Season 2 • Current',
+        season1Piece: 'Season 1 • Prior',
+        noEnchantReq: 'No enchant required',
+        raidBoss: 'Raid Boss',
+        raidLootS2: 'Raid Loot • Season 2',
+        viewGear: 'View Gear',
+        topTrinkets: 'Most Popular Trinkets',
+        topWeapons: 'Most Popular Weapons',
+        topRings: 'Most Popular Rings',
+        weaponsSlotHeader: 'Weapons • Main Slots',
+        projectedIlvl: 'Projected Item Level',
+        avgIlvl: 'Average Item Level',
+        noSecondaryStats: 'No secondary stats',
+
         // Footer
         footerData: 'Real-time data provided by <a href="https://raider.io" target="_blank" class="text-amber-400 hover:underline">Raider.IO</a> and tooltips from <a href="https://wowhead.com" target="_blank" class="text-yellow-400 hover:underline">Wowhead</a>.',
         footerBlizzard: 'World of Warcraft® is a registered trademark of Blizzard Entertainment.'
@@ -323,44 +353,51 @@ function setLanguage(lang) {
         console.warn('Could not save language to localStorage:', e);
     }
 
-    document.documentElement.lang = lang;
+    if (typeof document !== 'undefined') {
+        if (document.documentElement) document.documentElement.lang = lang;
 
-    // Update active button classes on language switchers
-    const btnEs = document.getElementById('lang-btn-es');
-    const btnEn = document.getElementById('lang-btn-en');
-    if (btnEs && btnEn) {
-        if (lang === 'es') {
-            btnEs.className = 'px-2 py-0.5 rounded text-xs font-black bg-amber-500 text-black shadow-sm transition';
-            btnEn.className = 'px-2 py-0.5 rounded text-xs font-bold text-gray-400 hover:text-white transition';
-        } else {
-            btnEn.className = 'px-2 py-0.5 rounded text-xs font-black bg-amber-500 text-black shadow-sm transition';
-            btnEs.className = 'px-2 py-0.5 rounded text-xs font-bold text-gray-400 hover:text-white transition';
+        // Update active button classes on language switchers
+        const btnEs = document.getElementById('lang-btn-es');
+        const btnEn = document.getElementById('lang-btn-en');
+        if (btnEs && btnEn) {
+            if (lang === 'es') {
+                btnEs.className = 'px-2 py-0.5 rounded text-xs font-black bg-amber-500 text-black shadow-sm transition';
+                btnEn.className = 'px-2 py-0.5 rounded text-xs font-bold text-gray-400 hover:text-white transition';
+            } else {
+                btnEn.className = 'px-2 py-0.5 rounded text-xs font-black bg-amber-500 text-black shadow-sm transition';
+                btnEs.className = 'px-2 py-0.5 rounded text-xs font-bold text-gray-400 hover:text-white transition';
+            }
         }
+
+        // Apply translations to all DOM elements with data-i18n
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (key && (TRANSLATIONS[lang]?.[key] || TRANSLATIONS.es?.[key])) {
+                el.innerHTML = t(key);
+            }
+        });
+
+        // Apply placeholder translations
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-placeholder');
+            if (key) el.setAttribute('placeholder', t(key));
+        });
+
+        // Apply title translations
+        document.querySelectorAll('[data-i18n-title]').forEach(el => {
+            const key = el.getAttribute('data-i18n-title');
+            if (key) el.setAttribute('title', t(key));
+        });
     }
-
-    // Apply translations to all DOM elements with data-i18n
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (key && (TRANSLATIONS[lang]?.[key] || TRANSLATIONS.es?.[key])) {
-            el.innerHTML = t(key);
-        }
-    });
-
-    // Apply placeholder translations
-    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
-        const key = el.getAttribute('data-i18n-placeholder');
-        if (key) el.setAttribute('placeholder', t(key));
-    });
-
-    // Apply title translations
-    document.querySelectorAll('[data-i18n-title]').forEach(el => {
-        const key = el.getAttribute('data-i18n-title');
-        if (key) el.setAttribute('title', t(key));
-    });
 
     // Re-render Top 50 results if present to update tab titles, stats and table headers
     if (window.cachedPlayers && window.cachedPlayers.length > 0 && typeof window.renderResults === 'function') {
         window.renderResults(window.cachedPlayers, window.cachedClassSlug, window.cachedSpecSlug);
+    }
+
+    // Re-render restored badge if present
+    if (window._lastRestoredTimestamp && typeof window.showRestoredDataBadge === 'function') {
+        window.showRestoredDataBadge(window._lastRestoredTimestamp);
     }
 
     // Re-render SimC comparison if present

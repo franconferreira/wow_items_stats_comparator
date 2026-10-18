@@ -238,7 +238,16 @@ async function startAnalysis() {
                 }
                 
                 // Add gem secondary stats
-                const gems = item.gems_detail || [];
+                const rawGems = item.gems_detail || [];
+                const gems = rawGems.map(g => ({
+                    ...g,
+                    name: (typeof cleanWoWString === 'function') ? cleanWoWString(g.name) : g.name
+                }));
+                const enchants = (item.enchants_detail || []).map(e => ({
+                    ...e,
+                    name: (typeof cleanWoWString === 'function') ? cleanWoWString(e.name) : e.name
+                }));
+
                 for (const g of gems) {
                     const gName = g.name || '';
                     const mGems = gName.matchAll(/(\d+)\s*(Crit|Vers|Haste|Mastery)/gi);
@@ -256,13 +265,13 @@ async function startAnalysis() {
                     slot: slot,
                     item_id: item.item_id,
                     ilvl: item.item_level,
-                    name: item.name || tt.name,
+                    name: (typeof cleanWoWString === 'function') ? cleanWoWString(item.name || tt.name) : (item.name || tt.name),
                     icon: item.icon || tt.icon,
                     bonuses: item.bonuses || [],
                     isUse: tt.isUse,
                     stats: tt.stats || {},
                     gems: gems,
-                    enchants: item.enchants_detail || []
+                    enchants: enchants
                 };
             }
             

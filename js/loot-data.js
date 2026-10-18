@@ -13,16 +13,14 @@ const SEASON_RAID_DATA = {
                 {
                     name: "Ula'tek",
                     title: 'Último Jefe de Banda (Encounter 8)',
-                    npcId: 231450,
-                    bossIcon: 'achievement_boss_generalvezax',
+                    bossIcon: 'achievement_boss_yoggsaron_01',
                     patterns: ["Voracious Heart of Ula'tek", "Aqirbane Reliquary", "Chausses of Unbound Rancor", "Breath of Ula'tek", "Keeper's Seething Core", "Ula'tek"],
                     tierToken: 'Omnitoken de Tier (Cualquier ranura / Curio)'
                 },
                 {
                     name: 'The Coiled Altar',
                     title: 'Encuentro 7',
-                    npcId: 231448,
-                    bossIcon: 'inv_misc_altar_01',
+                    bossIcon: 'inv_relics_idolofrejuvenation',
                     patterns: ['Coiled Altar', 'Coiled'],
                     tierSlot: 'head',
                     tierToken: 'Token de Casco Tier'
@@ -30,8 +28,7 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'The Twin Fangs',
                     title: 'Encuentro 6',
-                    npcId: 231446,
-                    bossIcon: 'ability_hunter_snakeslash',
+                    bossIcon: 'achievement_boss_shadeoferanikus',
                     patterns: ['Twin Fangs', 'Fang'],
                     tierSlot: 'shoulder',
                     tierToken: 'Token de Hombreras Tier'
@@ -39,8 +36,7 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'Sszorak',
                     title: 'Encuentro 5',
-                    npcId: 231444,
-                    bossIcon: 'inv_misc_monstermushroom_02',
+                    bossIcon: 'inv_misc_monsterhead_03',
                     patterns: ["Apex Brute's Claw Ring", 'Sszorak'],
                     tierSlot: 'chest',
                     tierToken: 'Token de Pechera Tier'
@@ -48,7 +44,6 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'Vashnik the Malignant',
                     title: 'Encuentro 4',
-                    npcId: 231442,
                     bossIcon: 'inv_potion_68',
                     patterns: ["Scaled Fiend's Warboots", "Vile Alchemist's Band", 'Vashnik'],
                     tierSlot: 'legs',
@@ -57,7 +52,6 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'The Lost Explorers',
                     title: 'Encuentro 3',
-                    npcId: 231440,
                     bossIcon: 'inv_misc_spyglass_02',
                     patterns: ['Lost Explorers'],
                     tierSlot: 'hands',
@@ -66,14 +60,12 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'Entombed Sentinels',
                     title: 'Encuentro 2',
-                    npcId: 231438,
                     bossIcon: 'inv_helmet_147',
                     patterns: ['Entombed Sentinels', 'Entombed']
                 },
                 {
                     name: "Nek'zali the Soulcoiler",
                     title: 'Encuentro 1',
-                    npcId: 231436,
                     bossIcon: 'inv_misc_head_troll_01',
                     patterns: ["Entombed Cultist's Sabatons", "Amani Summoning Shawl", "Nek'zali", "Soulcoiler"]
                 }
@@ -99,22 +91,19 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'Nymrissa Wavecaller',
                     title: 'The Tidebound Grotto',
-                    npcId: 231420,
-                    bossIcon: 'inv_misc_head_naga_01',
+                    bossIcon: 'ability_druid_primaltenacity',
                     patterns: ['Alluring Bubbleband', 'Swelling Sea Spaulders', 'Nymrissa', 'Wavecaller']
                 },
                 {
                     name: 'Rotmire',
                     title: 'Sporefall',
-                    npcId: 231422,
                     bossIcon: 'spell_shadow_plaguecloud',
                     patterns: ['Rotmire', 'Sporefall']
                 },
                 {
                     name: "Kith'ix",
                     title: "The Unbinding of Kith'ix",
-                    npcId: 231424,
-                    bossIcon: 'inv_misc_head_dragon_black',
+                    bossIcon: 'achievement_boss_hakkar',
                     patterns: ["Kith'ix", 'Kithix']
                 }
             ]

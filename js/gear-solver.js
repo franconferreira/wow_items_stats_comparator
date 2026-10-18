@@ -26,9 +26,11 @@ function getConsensusEnchantsAndGems(top10Players) {
             // Gems
             (it.gems || []).forEach(g => {
                 if (!g || !g.name) return;
-                const k = g.name;
+                const cleanName = (typeof cleanWoWString === 'function') ? cleanWoWString(g.name) : g.name;
+                if (!cleanName) return;
+                const k = cleanName;
                 if (!gemCounts.has(k)) {
-                    gemCounts.set(k, { name: g.name, icon: g.icon, id: g.id, count: 0 });
+                    gemCounts.set(k, { name: cleanName, icon: g.icon, id: g.id, count: 0 });
                 }
                 gemCounts.get(k).count++;
             });
@@ -36,14 +38,16 @@ function getConsensusEnchantsAndGems(top10Players) {
             // Enchants
             (it.enchants || []).forEach(e => {
                 if (!e || !e.name) return;
+                const cleanName = (typeof cleanWoWString === 'function') ? cleanWoWString(e.name) : e.name;
+                if (!cleanName) return;
                 if (!enchantCountsBySlot.has(canonical)) {
                     enchantCountsBySlot.set(canonical, new Map());
                 }
                 const slotEnchMap = enchantCountsBySlot.get(canonical);
-                if (!slotEnchMap.has(e.name)) {
-                    slotEnchMap.set(e.name, { name: e.name, icon: e.icon, id: e.id, count: 0 });
+                if (!slotEnchMap.has(cleanName)) {
+                    slotEnchMap.set(cleanName, { name: cleanName, icon: e.icon, id: e.id, count: 0 });
                 }
-                slotEnchMap.get(e.name).count++;
+                slotEnchMap.get(cleanName).count++;
             });
         });
     });
@@ -484,22 +488,22 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                     if (!raidMap.has(it.item_id)) {
                         let bossName = 'Jefe de Banda';
                         let raidName = 'Banda de Temporada';
-                        let bossNpcId = 231450;
-                        let bossIcon = 'achievement_boss_generalvezax';
+                        let bossTitle = '';
+                        let bossIcon = 'achievement_boss_yoggsaron_01';
 
                         for (const r of raids) {
                             for (const b of r.bosses) {
                                 if (b.patterns && b.patterns.some(pat => it.name.toLowerCase().includes(pat.toLowerCase()))) {
                                     bossName = b.name;
+                                    bossTitle = b.title || '';
                                     raidName = r.raidName;
-                                    bossNpcId = b.npcId || bossNpcId;
                                     bossIcon = b.bossIcon || bossIcon;
                                     break;
                                 }
                                 if (b.tierSlot && b.tierSlot === canonical) {
                                     bossName = b.name;
+                                    bossTitle = b.title || '';
                                     raidName = r.raidName;
-                                    bossNpcId = b.npcId || bossNpcId;
                                     bossIcon = b.bossIcon || bossIcon;
                                     break;
                                 }
@@ -508,14 +512,14 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
 
                         raidMap.set(it.item_id, {
                             id: it.item_id,
-                            name: it.name,
+                            name: (typeof cleanWoWString === 'function') ? cleanWoWString(it.name) : it.name,
                             icon: it.icon,
                             slot: canonical,
                             ilvl: it.ilvl || 334,
                             stats: it.stats || {},
                             dungeon: raidName,
                             boss: bossName,
-                            bossNpcId: bossNpcId,
+                            bossTitle: bossTitle,
                             bossIcon: bossIcon,
                             itemType: 'raid',
                             playerCount: 0

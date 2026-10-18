@@ -151,6 +151,197 @@ const CRAFTED_BONUS_SET = new Set([
     9467, 9468, 9469, 9470, 9471, 9472, 9473, 9474, 9475, 9476, 8836, 8837, 8838, 8839
 ]);
 
+// Universal WoW string sanitizer (removes color codes like |cff..., |cnIQ4:..., |r, and hyperlinks)
+function cleanWoWString(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str
+        .replace(/\|c[0-9a-fA-F]{8}/gi, '')
+        .replace(/\|cn[A-Za-z0-9_]+:/gi, '')
+        .replace(/\|r/gi, '')
+        .replace(/\|H[^|]+\|h([^|]*)\|h/gi, '$1')
+        .trim();
+}
+
+// Localized stat names helper
+function getStatName(statKey, short = false) {
+    const lang = (typeof getLanguage === 'function') ? getLanguage() : 'es';
+    const dict = {
+        'Critical Strike': {
+            es: short ? 'Crítico' : 'Golpe Crítico',
+            en: short ? 'Crit' : 'Critical Strike'
+        },
+        'Haste': {
+            es: 'Celeridad',
+            en: 'Haste'
+        },
+        'Mastery': {
+            es: 'Maestría',
+            en: 'Mastery'
+        },
+        'Versatility': {
+            es: short ? 'Vers' : 'Versatilidad',
+            en: short ? 'Vers' : 'Versatility'
+        }
+    };
+    if (dict[statKey]) {
+        return dict[statKey][lang] || dict[statKey].es;
+    }
+    return statKey;
+}
+
+// Localized class and spec names
+const CLASS_NAMES_ES = {
+    'death-knight': 'Caballero de la Muerte',
+    'demon-hunter': 'Cazador de Demonios',
+    'druid': 'Druida',
+    'evoker': 'Evocador',
+    'hunter': 'Cazador',
+    'mage': 'Mago',
+    'monk': 'Monje',
+    'paladin': 'Paladín',
+    'priest': 'Sacerdote',
+    'rogue': 'Pícaro',
+    'shaman': 'Chamán',
+    'warlock': 'Brujo',
+    'warrior': 'Guerrero'
+};
+
+const SPEC_NAMES_ES = {
+    'blood': 'Sangre',
+    'frost': 'Escarcha',
+    'unholy': 'Profano',
+    'havoc': 'Devastación',
+    'vengeance': 'Venganza',
+    'balance': 'Equilibrio',
+    'feral': 'Feral',
+    'guardian': 'Guardián',
+    'restoration': 'Restauración',
+    'devastation': 'Devastación',
+    'preservation': 'Preservación',
+    'augmentation': 'Aumento',
+    'beast-mastery': 'Bestias',
+    'beast mastery': 'Bestias',
+    'marksmanship': 'Puntería',
+    'survival': 'Supervivencia',
+    'arcane': 'Arcano',
+    'fire': 'Fuego',
+    'brewmaster': 'Maestro Cervecero',
+    'mistweaver': 'Tejedor de Niebla',
+    'windwalker': 'Viajero del Viento',
+    'holy': 'Sagrado',
+    'protection': 'Protección',
+    'retribution': 'Reprensión',
+    'discipline': 'Disciplina',
+    'shadow': 'Sombras',
+    'assassination': 'Asesinato',
+    'outlaw': 'Forajido',
+    'subtlety': 'Sutileza',
+    'elemental': 'Elemental',
+    'enhancement': 'Mejora',
+    'affliction': 'Aflicción',
+    'demonology': 'Demonología',
+    'destruction': 'Destrucción',
+    'arms': 'Armas',
+    'fury': 'Furia'
+};
+
+function getLocalizedClassName(classSlug) {
+    const lang = (typeof getLanguage === 'function') ? getLanguage() : 'es';
+    const slug = (classSlug || '').toLowerCase();
+    if (lang === 'es' && CLASS_NAMES_ES[slug]) {
+        return CLASS_NAMES_ES[slug];
+    }
+    const cData = WOW_CLASSES[slug];
+    return cData ? cData.name : (classSlug ? classSlug.replace('-', ' ') : 'Clase');
+}
+
+function getLocalizedSpecName(classSlug, specSlug) {
+    const lang = (typeof getLanguage === 'function') ? getLanguage() : 'es';
+    const sSlug = (specSlug || '').toLowerCase();
+    if (lang === 'es' && SPEC_NAMES_ES[sSlug]) {
+        return SPEC_NAMES_ES[sSlug];
+    }
+    const cData = WOW_CLASSES[(classSlug || '').toLowerCase()];
+    const specObj = cData?.specs?.find(s => s.slug === sSlug || s.name.toLowerCase() === sSlug);
+    return specObj ? specObj.name : (specSlug ? specSlug.charAt(0).toUpperCase() + specSlug.slice(1) : '');
+}
+
+// Localized Dungeon & Boss translations
+const DUNGEON_NAMES_MAP = {
+    "Kings' Rest": { es: "Reposo de los Reyes", en: "Kings' Rest" },
+    "Temple of Sethraliss": { es: "Templo de Sethraliss", en: "Temple of Sethraliss" },
+    "Murder Row": { es: "Callejón del Asesinato", en: "Murder Row" },
+    "Voidscar Arena": { es: "Arena Cicatriz del Vacío", en: "Voidscar Arena" },
+    "Altar of Fangs": { es: "Altar de los Colmillos", en: "Altar of Fangs" },
+    "Ruby Life Pools": { es: "Estanques de Vida Rubí", en: "Ruby Life Pools" },
+    "Den of Nalorakk": { es: "Guarida de Nalorakk", en: "Den of Nalorakk" },
+    "The Blinding Vale": { es: "El Valle Cegador", en: "The Blinding Vale" },
+    "The Venomous Abyss": { es: "El Abismo Venenoso", en: "The Venomous Abyss" },
+    "Zul'Aman / Hex Lord Malacrass": { es: "Zul'Aman / Señor Aojador Malacrass", en: "Zul'Aman / Hex Lord Malacrass" },
+    "World Bosses & Mini-Raids": { es: "Jefes de Mundo y Mini-Bandas", en: "World Bosses & Mini-Raids" }
+};
+
+const BOSS_NAMES_MAP = {
+    "King Dazar": { es: "Rey Dazar", en: "King Dazar" },
+    "Kystia Manaheart": { es: "Kystia Corazón de Maná", en: "Kystia Manaheart" },
+    "Atroxus": { es: "Atroxus", en: "Atroxus" },
+    "Avatar of Sethraliss": { es: "Avatar de Sethraliss", en: "Avatar of Sethraliss" },
+    "The Writhing Coil": { es: "La Espiral Serpenteante", en: "The Writhing Coil" },
+    "Jefe de Mazmorra": { es: "Jefe de Mazmorra", en: "Dungeon Boss" },
+    "Dungeon Boss": { es: "Jefe de Mazmorra", en: "Dungeon Boss" },
+    "Lightwarden Ruia": { es: "Celadora de la Luz Ruia", en: "Lightwarden Ruia" },
+    "Mchimba the Embalmer": { es: "Mchimba el Embalsamador", en: "Mchimba the Embalmer" },
+    "Zaen Bladesorrow": { es: "Zaen Penahojas", en: "Zaen Bladesorrow" },
+    "The Golden Serpent": { es: "La Serpiente Dorada", en: "The Golden Serpent" },
+    "Merektha": { es: "Merektha", en: "Merektha" },
+    "Ziekket": { es: "Ziekket", en: "Ziekket" },
+    "Taz'Rah": { es: "Taz'Rah", en: "Taz'Rah" },
+    "The Hoardmonger": { es: "El Tratante de Alijos", en: "The Hoardmonger" },
+    "Aka'ali the Conqueror": { es: "Aka'ali la Conquistadora", en: "Aka'ali the Conqueror" },
+    "Galvazzt": { es: "Galvazzt", en: "Galvazzt" },
+    "Meittik": { es: "Meittik", en: "Meittik" },
+    "Rav'i": { es: "Rav'i", en: "Rav'i" },
+    "Melidrussa Chillworn": { es: "Melidrussa Faucefría", en: "Melidrussa Chillworn" },
+    "Lithiel Cinderfury": { es: "Lithiel Furiaceniza", en: "Lithiel Cinderfury" },
+    "Kokia Blazehoof": { es: "Kokia Pezuña de Fuego", en: "Kokia Blazehoof" },
+    "Xathuux the Annihilator": { es: "Xathuux el Aniquilador", en: "Xathuux the Annihilator" },
+    "Ikuzz the Light Hunter": { es: "Ikuzz el Cazador de Luz", en: "Ikuzz the Light Hunter" },
+    "Charonus": { es: "Charonus", en: "Charonus" },
+    "Sentinel of Winter": { es: "Centinela del Invierno", en: "Sentinel of Winter" },
+    "Kyrakka and Erkhart Stormvein": { es: "Kyrakka y Erkhart Vena de Tormenta", en: "Kyrakka and Erkhart Stormvein" },
+    "Ula'tek": { es: "Ula'tek", en: "Ula'tek" },
+    "The Coiled Altar": { es: "El Altar Enroscado", en: "The Coiled Altar" },
+    "The Twin Fangs": { es: "Los Colmillos Gemelos", en: "The Twin Fangs" },
+    "Sszorak": { es: "Sszorak", en: "Sszorak" },
+    "Vashnik the Malignant": { es: "Vashnik el Maligno", en: "Vashnik the Malignant" },
+    "The Lost Explorers": { es: "Los Exploradores Perdidos", en: "The Lost Explorers" },
+    "Entombed Sentinels": { es: "Centinelas Sepultados", en: "Entombed Sentinels" },
+    "Nek'zali the Soulcoiler": { es: "Nek'zali el Atador de Almas", en: "Nek'zali the Soulcoiler" },
+    "Hex Lord Malacrass": { es: "Señor Aojador Malacrass", en: "Hex Lord Malacrass" },
+    "Hex Lord Malacrass / Zul'jan": { es: "Señor Aojador Malacrass / Zul'jan", en: "Hex Lord Malacrass / Zul'jan" },
+    "Nymrissa Wavecaller": { es: "Nymrissa Clamaolas", en: "Nymrissa Wavecaller" },
+    "Rotmire": { es: "Ciénaga Podrida", en: "Rotmire" },
+    "Kith'ix": { es: "Kith'ix", en: "Kith'ix" }
+};
+
+function getLocalizedDungeonName(name) {
+    if (!name) return '';
+    const lang = (typeof getLanguage === 'function') ? getLanguage() : 'es';
+    if (DUNGEON_NAMES_MAP[name]) {
+        return DUNGEON_NAMES_MAP[name][lang] || DUNGEON_NAMES_MAP[name].es;
+    }
+    return name;
+}
+
+function getLocalizedBossName(name) {
+    if (!name) return '';
+    const lang = (typeof getLanguage === 'function') ? getLanguage() : 'es';
+    if (BOSS_NAMES_MAP[name]) {
+        return BOSS_NAMES_MAP[name][lang] || BOSS_NAMES_MAP[name].es;
+    }
+    return name;
+}
+
 const SLOT_NAMES_ES = {
     head: 'Casco',
     neck: 'Cuello',
@@ -268,6 +459,12 @@ trinket2=,id=270173,bonus_id=6652/13335/13848
 main_hand=,id=268213,bonus_id=6652/13335/13848`;
 
 if (typeof window !== 'undefined') {
+    window.cleanWoWString = cleanWoWString;
+    window.getStatName = getStatName;
+    window.getLocalizedClassName = getLocalizedClassName;
+    window.getLocalizedSpecName = getLocalizedSpecName;
+    window.getLocalizedDungeonName = getLocalizedDungeonName;
+    window.getLocalizedBossName = getLocalizedBossName;
     window.WOW_CLASSES = WOW_CLASSES;
     window.STAT_COLORS = STAT_COLORS;
     window.CRAFTED_BONUS_SET = CRAFTED_BONUS_SET;

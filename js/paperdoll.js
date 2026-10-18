@@ -160,18 +160,18 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         const uPct = userPcts[st].toFixed(1);
         const aPct = avgPcts[st].toFixed(1);
         const color = STAT_COLORS[st].color;
-        const name = STAT_COLORS[st].name;
+        const name = (typeof getStatName === 'function') ? getStatName(st, true) : STAT_COLORS[st].name;
 
         if (parseFloat(uPct) > 0) {
             userBarHtml += `
-                <div style="width: ${uPct}%; background-color: ${color};" class="h-full flex items-center justify-center text-[11px] font-bold text-black" title="Tu ${name}: ${uPct}% (${uStats[st]})">
+                <div style="width: ${uPct}%; background-color: ${color};" class="h-full flex items-center justify-center text-[11px] font-bold text-black" title="${typeof t === 'function' ? t('yourCharacter') : 'Tu'} ${name}: ${uPct}% (${uStats[st]})">
                     ${parseFloat(uPct) > 12 ? `${name} ${uPct}%` : ''}
                 </div>
             `;
         }
         if (parseFloat(aPct) > 0) {
             top10BarHtml += `
-                <div style="width: ${aPct}%; background-color: ${color};" class="h-full flex items-center justify-center text-[11px] font-bold text-black" title="Top 50 ${name}: ${aPct}% (${avgStats[st]})">
+                <div style="width: ${aPct}%; background-color: ${color};" class="h-full flex items-center justify-center text-[11px] font-bold text-black" title="${typeof t === 'function' ? t('top50Avg') : 'Top 50'} ${name}: ${aPct}% (${avgStats[st]})">
                     ${parseFloat(aPct) > 12 ? `${name} ${aPct}%` : ''}
                 </div>
             `;
@@ -240,10 +240,15 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
 
     // 5. Equipment Inspection & Slot Season Classification (WoW Paperdoll Layout)
     const classData = WOW_CLASSES[userClassSlug];
-    const className = classData ? classData.name : (profile.class ? profile.class.replace('-', ' ') : 'Clase');
+    const className = (typeof getLocalizedClassName === 'function') ? getLocalizedClassName(userClassSlug) : (classData ? classData.name : 'Clase');
     const classHex = classData ? classData.color : '#00bcd4';
     const classIconUrl = classData && classData.icon ? `https://wow.zamimg.com/images/wow/icons/large/${classData.icon}.jpg` : null;
-    const specName = profile.spec ? profile.spec.charAt(0).toUpperCase() + profile.spec.slice(1) : '';
+    const specName = (typeof getLocalizedSpecName === 'function') ? getLocalizedSpecName(userClassSlug, profile.spec) : (profile.spec ? profile.spec.charAt(0).toUpperCase() + profile.spec.slice(1) : '');
+
+    const currentLang = (typeof getLanguage === 'function') ? getLanguage() : 'es';
+    const classSpecTitle = currentLang === 'es'
+        ? `${className} ${specName}`.trim()
+        : `${specName ? specName + ' ' : ''}${className}`.trim();
 
     const combatSlots = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'hands', 'waist', 'legs', 'feet', 'finger1', 'finger2', 'trinket1', 'trinket2', 'mainhand', 'offhand'];
     let lockedCount = 0;
@@ -274,12 +279,17 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         const slotLabel = (typeof getSlotName === 'function') ? getSlotName(slotKey) : (SLOT_NAMES_ES[slotKey] || slotKey);
 
         const canonical = (typeof getCanonicalSlot === 'function') ? getCanonicalSlot(slotKey) : slotKey;
-        const slotEnch = consensusEnchants ? consensusEnchants[canonical] : null;
+        const rawEnch = consensusEnchants ? consensusEnchants[canonical] : null;
+        const enchName = rawEnch ? ((typeof cleanWoWString === 'function') ? cleanWoWString(rawEnch.name) : rawEnch.name) : '';
+        const slotEnch = rawEnch ? { ...rawEnch, name: enchName } : null;
+
         const isSocketSlot = canonical === 'finger' || canonical === 'neck';
-        const slotGem = (isSocketSlot && topGem) ? topGem : null;
+        const rawGem = (isSocketSlot && topGem) ? topGem : null;
+        const gemName = rawGem ? ((typeof cleanWoWString === 'function') ? cleanWoWString(rawGem.name) : rawGem.name) : '';
+        const slotGem = rawGem ? { ...rawGem, name: gemName } : null;
 
         const gemEnchantBadgesHtml = (slotEnch || slotGem) ? `
-            <div class="flex items-center gap-1.5 flex-wrap mt-1">
+            <div class="flex items-center gap-1.5 flex-wrap min-h-[18px]">
                 ${slotEnch ? `
                     <span class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/70 border border-emerald-500/30 text-emerald-300 font-medium truncate" title="Encanto: ${slotEnch.name}">
                         <span class="text-[9px]">📜</span>
@@ -299,8 +309,11 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         if (selectedPkg && pkgItemsBySlot[slotKey]) {
             const dropItem = pkgItemsBySlot[slotKey];
             const dropIlvl = dropItem.ilvl || (activeTab === 'optimal' ? 334 : 330);
-            const dropStatSummary = Object.entries(dropItem.stats || {}).map(([s, val]) => `+${val} ${STAT_COLORS[s]?.name || s}`).join(', ') || 'Sin stats secundarios';
+            const dropStatSummary = Object.entries(dropItem.stats || {}).map(([s, val]) => `+${val} ${(typeof getStatName === 'function') ? getStatName(s, true) : (STAT_COLORS[s]?.name || s)}`).join(', ') || (typeof t === 'function' ? t('noSecondaryStats') : 'Sin stats secundarios');
             const dropIconUrl = dropItem.icon ? `https://wow.zamimg.com/images/wow/icons/medium/${dropItem.icon}.jpg` : 'https://wow.zamimg.com/images/wow/icons/medium/inv_misc_questionmark.jpg';
+            const dropItemName = (typeof cleanWoWString === 'function') ? cleanWoWString(dropItem.name) : dropItem.name;
+            const localizedDungeon = (typeof getLocalizedDungeonName === 'function') ? getLocalizedDungeonName(dropItem.dungeon) : dropItem.dungeon;
+            const localizedBoss = (typeof getLocalizedBossName === 'function') ? getLocalizedBossName(dropItem.boss) : dropItem.boss;
             const isOptimal = activeTab === 'optimal';
             const isPkg2 = activeTab === 'pkg2';
 
@@ -313,14 +326,14 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                 badgeText = 'CRAFT';
                 pinBg = 'border-blue-500/40 bg-blue-950/80 text-blue-300';
                 pinIcon = (typeof getIcon === 'function') ? getIcon('hammer', 'w-3.5 h-3.5 text-blue-300') : '';
-                pinTitle = `${typeof t === 'function' ? t('sparkCraft') : 'Fabricación con Chispa'} (${dropItem.dungeon || 'Profesión'})`;
+                pinTitle = `${typeof t === 'function' ? t('sparkCraft') : 'Fabricación con Chispa'} (${localizedDungeon || 'Profesión'})`;
             } else if (dropItem.itemType === 'raid') {
                 accentBorder = 'border-red-500/50 bg-red-950/20 hover:border-red-400';
                 accentColor = 'text-red-400';
                 badgeBorder = 'border-red-500/40 text-red-300';
                 badgeText = 'RAID';
                 pinBg = 'border-red-500/40 bg-red-950/80 text-red-300';
-                pinTitle = `${typeof t === 'function' ? t('raid') : 'Banda'}: ${dropItem.dungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${dropItem.boss})`;
+                pinTitle = `${typeof t === 'function' ? t('raid') : 'Banda'}: ${localizedDungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${localizedBoss})`;
             } else if (isPkg2) {
                 accentBorder = 'border-amber-500/50 bg-amber-950/20 hover:border-amber-400';
                 accentColor = 'text-amber-400';
@@ -328,7 +341,7 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                 badgeText = 'DROP';
                 pinBg = 'border-amber-500/40 bg-amber-950/80 text-amber-300';
                 pinIcon = (typeof getIcon === 'function') ? getIcon('pin', 'w-3.5 h-3.5 text-amber-300') : '';
-                pinTitle = `${typeof t === 'function' ? t('dropIn') : 'Dropea en'} ${dropItem.dungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${dropItem.boss})`;
+                pinTitle = `${typeof t === 'function' ? t('dropIn') : 'Dropea en'} ${localizedDungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${localizedBoss})`;
             } else {
                 accentBorder = 'border-cyan-500/50 bg-cyan-950/20 hover:border-cyan-400';
                 accentColor = 'text-cyan-400';
@@ -336,7 +349,7 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                 badgeText = 'DROP';
                 pinBg = 'border-cyan-500/40 bg-cyan-950/80 text-cyan-300';
                 pinIcon = (typeof getIcon === 'function') ? getIcon('pin', 'w-3.5 h-3.5 text-cyan-300') : '';
-                pinTitle = `${typeof t === 'function' ? t('dropIn') : 'Dropea en'} ${dropItem.dungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${dropItem.boss})`;
+                pinTitle = `${typeof t === 'function' ? t('dropIn') : 'Dropea en'} ${localizedDungeon} (${typeof t === 'function' ? t('boss') : 'Jefe'}: ${localizedBoss})`;
             }
 
             const imgBorder = dropItem.itemType === 'crafted'
@@ -345,15 +358,25 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                     ? 'border-red-400/80 shadow-[0_0_8px_rgba(239,68,68,0.3)]'
                     : (isOptimal ? 'border-purple-400/80 shadow-[0_0_8px_rgba(168,85,247,0.3)]' : (isPkg2 ? 'border-amber-400/80 shadow-[0_0_8px_rgba(251,191,36,0.3)]' : 'border-cyan-400/80 shadow-[0_0_8px_rgba(34,211,238,0.3)]')));
 
-            // Right action element: for raid items, display Boss portrait with Wowhead NPC tooltip (Requirement 6)
+            // Right action element: for raid items, display verified boss portrait with authentic Wowhead popup on hover
             let rightActionHtml = '';
             if (dropItem.itemType === 'raid') {
-                const bossNpc = dropItem.bossNpcId || 231450;
-                const bossIcon = dropItem.bossIcon || 'achievement_boss_generalvezax';
+                const bossIcon = dropItem.bossIcon || 'achievement_boss_yoggsaron_01';
+                const bossTitleText = dropItem.bossTitle || (typeof t === 'function' ? t('raidBoss') : 'Jefe de Banda');
+
                 rightActionHtml = `
-                    <a href="https://www.wowhead.com/npc=${bossNpc}" data-wowhead="npc=${bossNpc}" target="_blank" class="w-8 h-8 rounded-lg border border-red-500/50 bg-red-950/80 p-0.5 flex items-center justify-center shrink-0 shadow-sm overflow-hidden hover:border-red-400 transition cursor-pointer" title="${typeof t === 'function' ? t('boss') : 'Jefe'}: ${dropItem.boss} (${dropItem.dungeon})">
-                        <img src="https://wow.zamimg.com/images/wow/icons/medium/${bossIcon}.jpg" class="w-full h-full object-cover rounded" alt="${dropItem.boss}" onerror="this.src='https://wow.zamimg.com/images/wow/icons/medium/inv_misc_head_dragon_black.jpg'">
-                    </a>
+                    <div class="group relative flex items-center shrink-0">
+                        <a href="https://www.wowhead.com/search?q=${encodeURIComponent(dropItem.boss)}" target="_blank" class="w-8 h-8 rounded-lg border border-red-500/50 bg-red-950/80 p-0.5 flex items-center justify-center shrink-0 shadow-sm overflow-hidden hover:border-red-400 transition cursor-pointer" title="${typeof t === 'function' ? t('boss') : 'Jefe'}: ${localizedBoss} (${localizedDungeon})">
+                            <img src="https://wow.zamimg.com/images/wow/icons/medium/${bossIcon}.jpg" class="w-full h-full object-cover rounded" alt="${localizedBoss}" onerror="this.src='https://wow.zamimg.com/images/wow/icons/medium/inv_misc_head_dragon_black.jpg'">
+                        </a>
+                        <div class="pointer-events-none absolute bottom-full right-0 mb-2 hidden group-hover:block z-50 w-64 p-3 rounded-lg border border-[#404040] bg-[#070d19]/95 text-xs shadow-2xl backdrop-blur-md">
+                            <div class="text-[#ffd100] font-bold text-sm leading-tight">${localizedBoss}</div>
+                            <div class="text-[#ffff00] text-[11px] mt-0.5">${localizedDungeon}</div>
+                            <div class="text-gray-300 text-[10px] mt-1 italic">${bossTitleText}</div>
+                            <div class="border-t border-gray-700/60 my-1.5"></div>
+                            <div class="text-[#1eff00] text-[10px] font-medium">${typeof t === 'function' ? t('raidLootS2') : 'Loot de Banda • Temporada 2'}</div>
+                        </div>
+                    </div>
                 `;
             } else {
                 rightActionHtml = `
@@ -363,29 +386,38 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                 `;
             }
 
+            const badgesLine = gemEnchantBadgesHtml || `
+                <div class="flex items-center gap-1.5 truncate min-h-[18px]">
+                    <span class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-gray-800/80 border border-gray-700/50 text-gray-400 font-medium truncate">
+                        <span class="w-1.5 h-1.5 rounded-full ${dropItem.itemType === 'raid' ? 'bg-red-400' : (dropItem.itemType === 'crafted' ? 'bg-blue-400' : 'bg-cyan-400')}"></span>
+                        <span>${dropItem.itemType === 'raid' ? (typeof t === 'function' ? t('raid') : 'Banda') : (dropItem.itemType === 'crafted' ? (typeof t === 'function' ? t('sparkCraft') : 'Crafteo') : (typeof t === 'function' ? t('dungeonMPlus') : 'Mazmorra M+'))}</span>
+                    </span>
+                </div>
+            `;
+
             return `
-                <div data-slot="${slotLabel}" title="${slotLabel}: ${dropItem.name} (ilvl ${dropIlvl}) — ${pinTitle}" class="p-2 rounded-xl border ${accentBorder} transition flex items-center justify-between gap-2 shadow-sm">
-                    <div class="flex items-center space-x-2.5 min-w-0 flex-1">
+                <div data-slot="${slotLabel}" title="${slotLabel}: ${dropItemName} (ilvl ${dropIlvl}) — ${pinTitle}" class="h-[74px] min-h-[74px] p-2 rounded-xl border ${accentBorder} transition flex items-center justify-between gap-2 shadow-sm">
+                    <div class="flex items-center space-x-2.5 min-w-0 flex-1 h-full">
                         <div class="relative shrink-0">
-                            <img src="${dropIconUrl}" class="w-9 h-9 rounded-lg border-2 ${imgBorder} bg-black" alt="${dropItem.name}">
+                            <img src="${dropIconUrl}" class="w-9 h-9 rounded-lg border-2 ${imgBorder} bg-black" alt="${dropItemName}">
                             <span class="absolute -bottom-1 -right-1 text-[8px] px-1 rounded bg-black/90 font-bold ${badgeBorder}">
                                 ${badgeText}
                             </span>
                         </div>
-                        <div class="truncate flex-1 min-w-0">
+                        <div class="truncate flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
                             <div class="flex items-center gap-1.5 min-w-0">
-                                <a href="https://www.wowhead.com/item=${dropItem.id}" data-wowhead="item=${dropItem.id}" target="_blank" class="text-xs font-bold text-white hover:${accentColor} truncate" title="${dropItem.name}">
-                                    ${dropItem.name}
+                                <a href="https://www.wowhead.com/item=${dropItem.id}" data-wowhead="item=${dropItem.id}" target="_blank" class="text-xs font-bold text-white hover:${accentColor} truncate" title="${dropItemName}">
+                                    ${dropItemName}
                                 </a>
                                 <span class="text-[11px] font-mono font-bold shrink-0 ${accentColor}">
                                     ilvl ${dropIlvl}
                                 </span>
                             </div>
-                            <div class="flex items-center gap-1.5 truncate mt-0.5">
+                            <div class="flex items-center gap-1.5 truncate">
                                 <span class="text-[10px] text-gray-300 truncate" title="${dropStatSummary}">${dropStatSummary}</span>
-                                <span class="text-[9px] ${accentColor} font-semibold truncate shrink-0">&bull; ${dropItem.dungeon}</span>
+                                <span class="text-[9px] ${accentColor} font-semibold truncate shrink-0">&bull; ${localizedDungeon}</span>
                             </div>
-                            ${gemEnchantBadgesHtml}
+                            ${badgesLine}
                         </div>
                     </div>
 
@@ -396,31 +428,41 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
 
         const ilvl = it ? (it.ilvl || 0) : 0;
         const isCurrentSeason = ilvl >= 330;
-        const statSummary = it ? (Object.entries(it.stats || {}).map(([s, val]) => `+${val} ${STAT_COLORS[s]?.name || s}`).join(', ') || 'Sin stats secundarios') : 'Sin stats';
+        const statSummary = it ? (Object.entries(it.stats || {}).map(([s, val]) => `+${val} ${(typeof getStatName === 'function') ? getStatName(s, true) : (STAT_COLORS[s]?.name || s)}`).join(', ') || (typeof t === 'function' ? t('noSecondaryStats') : 'Sin stats secundarios')) : (typeof t === 'function' ? t('noSecondaryStats') : 'Sin stats');
         const iconUrl = (it && it.icon) ? `https://wow.zamimg.com/images/wow/icons/medium/${it.icon}.jpg` : 'https://wow.zamimg.com/images/wow/icons/medium/inv_misc_questionmark.jpg';
+        const cleanCurrentName = it ? ((typeof cleanWoWString === 'function') ? cleanWoWString(it.name) : it.name) : '';
 
         // If package is active and slot was not replaced, it is a conserved piece in this set
         if (selectedPkg) {
+            const conservedBadgesLine = gemEnchantBadgesHtml || `
+                <div class="flex items-center gap-1.5 truncate min-h-[18px]">
+                    <span class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/70 border border-emerald-500/30 text-emerald-300 font-medium truncate">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                        <span>${typeof t === 'function' ? t('keptPiece') : 'Pieza conservada'}</span>
+                    </span>
+                </div>
+            `;
+
             return `
-                <div data-slot="${slotLabel}" title="${slotLabel}: ${it ? it.name : ''} (ilvl ${ilvl}) — ${typeof t === 'function' ? t('keptPiece') : 'Pieza conservada en este set'}" class="p-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-400/60 transition flex items-center justify-between gap-2 shadow-sm">
-                    <div class="flex items-center space-x-2.5 min-w-0 flex-1">
+                <div data-slot="${slotLabel}" title="${slotLabel}: ${cleanCurrentName} (ilvl ${ilvl}) — ${typeof t === 'function' ? t('keptPiece') : 'Pieza conservada en este set'}" class="h-[74px] min-h-[74px] p-2 rounded-xl border border-emerald-500/40 bg-emerald-950/20 hover:border-emerald-400/60 transition flex items-center justify-between gap-2 shadow-sm">
+                    <div class="flex items-center space-x-2.5 min-w-0 flex-1 h-full">
                         <div class="relative shrink-0">
-                            <img src="${iconUrl}" class="w-9 h-9 rounded-lg border-2 border-emerald-400/70 shadow-[0_0_8px_rgba(52,211,153,0.3)] bg-black" alt="${it ? it.name : ''}">
+                            <img src="${iconUrl}" class="w-9 h-9 rounded-lg border-2 border-emerald-400/70 shadow-[0_0_8px_rgba(52,211,153,0.3)] bg-black" alt="${cleanCurrentName}">
                             <span class="absolute -bottom-1 -right-1 text-[8px] px-1 rounded bg-black/90 font-bold text-emerald-400 border border-emerald-500/40">
                                 S2
                             </span>
                         </div>
-                        <div class="truncate flex-1 min-w-0">
+                        <div class="truncate flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
                             <div class="flex items-center gap-1.5 min-w-0">
-                                <a href="https://www.wowhead.com/item=${it ? it.item_id : ''}" data-wowhead="item=${it ? it.item_id : ''}" target="_blank" class="text-xs font-bold text-white hover:text-emerald-300 truncate" title="${it ? it.name : ''}">
-                                    ${it ? it.name : ''}
+                                <a href="https://www.wowhead.com/item=${it ? it.item_id : ''}" data-wowhead="item=${it ? it.item_id : ''}" target="_blank" class="text-xs font-bold text-white hover:text-emerald-300 truncate" title="${cleanCurrentName}">
+                                    ${cleanCurrentName}
                                 </a>
                                 <span class="text-[11px] font-mono font-bold shrink-0 text-emerald-400">
                                     ilvl ${ilvl || '—'}
                                 </span>
                             </div>
-                            <span class="text-[10px] text-gray-400 block truncate mt-0.5" title="${statSummary}">${statSummary}</span>
-                            ${gemEnchantBadgesHtml}
+                            <span class="text-[10px] text-gray-400 block truncate" title="${statSummary}">${statSummary}</span>
+                            ${conservedBadgesLine}
                         </div>
                     </div>
 
@@ -432,26 +474,35 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         }
 
         const isLocked = lockedSlots.has(slotKey);
+        const actualSeasonBadge = `
+            <div class="flex items-center gap-1.5 truncate min-h-[18px]">
+                <span class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded ${isLocked ? 'bg-emerald-950/70 border border-emerald-500/30 text-emerald-300' : 'bg-amber-950/70 border border-amber-500/30 text-amber-300'} font-medium truncate">
+                    <span class="w-1.5 h-1.5 rounded-full ${isLocked ? 'bg-emerald-400' : 'bg-amber-400'}"></span>
+                    <span>${isCurrentSeason ? (typeof t === 'function' ? t('season2Piece') : 'Temporada 2 • Actual') : (typeof t === 'function' ? t('season1Piece') : 'Temporada 1 • Previa')}</span>
+                </span>
+            </div>
+        `;
 
         return `
-            <div data-slot="${slotLabel}" title="${slotLabel}: ${it ? it.name : ''} (ilvl ${ilvl})" class="p-2 rounded-xl border ${isLocked ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-amber-500/40 bg-amber-950/20'} hover:border-cyan-400/50 transition flex items-center justify-between gap-2 shadow-sm">
-                <div class="flex items-center space-x-2.5 min-w-0 flex-1">
+            <div data-slot="${slotLabel}" title="${slotLabel}: ${cleanCurrentName} (ilvl ${ilvl})" class="h-[74px] min-h-[74px] p-2 rounded-xl border ${isLocked ? 'border-emerald-500/40 bg-emerald-950/20' : 'border-amber-500/40 bg-amber-950/20'} hover:border-cyan-400/50 transition flex items-center justify-between gap-2 shadow-sm">
+                <div class="flex items-center space-x-2.5 min-w-0 flex-1 h-full">
                     <div class="relative shrink-0">
-                        <img src="${iconUrl}" class="w-9 h-9 rounded-lg border-2 ${isLocked ? 'border-emerald-400/70 shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'border-amber-400/70 shadow-[0_0_8px_rgba(251,191,36,0.3)]'} bg-black" alt="${it ? it.name : ''}">
+                        <img src="${iconUrl}" class="w-9 h-9 rounded-lg border-2 ${isLocked ? 'border-emerald-400/70 shadow-[0_0_8px_rgba(52,211,153,0.3)]' : 'border-amber-400/70 shadow-[0_0_8px_rgba(251,191,36,0.3)]'} bg-black" alt="${cleanCurrentName}">
                         <span class="absolute -bottom-1 -right-1 text-[8px] px-1 rounded bg-black/90 font-bold ${isLocked ? 'text-emerald-400 border border-emerald-500/40' : 'text-amber-400 border border-amber-500/40'}">
                             ${isLocked ? 'S2' : 'S1'}
                         </span>
                     </div>
-                    <div class="truncate flex-1 min-w-0">
+                    <div class="truncate flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
                         <div class="flex items-center gap-1.5 min-w-0">
-                            <a href="https://www.wowhead.com/item=${it ? it.item_id : ''}" data-wowhead="item=${it ? it.item_id : ''}" target="_blank" class="text-xs font-bold text-white hover:text-cyan-300 truncate" title="${it ? it.name : ''}">
-                                ${it ? it.name : ''}
+                            <a href="https://www.wowhead.com/item=${it ? it.item_id : ''}" data-wowhead="item=${it ? it.item_id : ''}" target="_blank" class="text-xs font-bold text-white hover:text-cyan-300 truncate" title="${cleanCurrentName}">
+                                ${cleanCurrentName}
                             </a>
                             <span class="text-[11px] font-mono font-bold shrink-0 ${isCurrentSeason ? 'text-emerald-400' : 'text-amber-400'}">
                                 ilvl ${ilvl || '—'}
                             </span>
                         </div>
-                        <span class="text-[10px] text-gray-400 block truncate mt-0.5" title="${statSummary}">${statSummary}</span>
+                        <span class="text-[10px] text-gray-400 block truncate" title="${statSummary}">${statSummary}</span>
+                        ${actualSeasonBadge}
                     </div>
                 </div>
 
@@ -469,22 +520,25 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         if (uItems['offhand']) {
             return renderPaperdollSlotCard('offhand');
         }
-            const offhandLabel = (typeof getSlotName === 'function') ? getSlotName('offhand') : 'Mano Secundaria';
-            return `
-            <div data-slot="${offhandLabel}" title="${offhandLabel}" class="p-2 rounded-xl border border-gray-800/80 bg-gray-900/30 opacity-70 flex items-center justify-between gap-2 shadow-sm">
-                <div class="flex items-center space-x-2.5 min-w-0 flex-1">
+        const offhandLabel = (typeof getSlotName === 'function') ? getSlotName('offhand') : 'Mano Secundaria';
+        return `
+            <div data-slot="${offhandLabel}" title="${offhandLabel}" class="h-[74px] min-h-[74px] p-2 rounded-xl border border-gray-800/80 bg-gray-900/30 opacity-70 flex items-center justify-between gap-2 shadow-sm">
+                <div class="flex items-center space-x-2.5 min-w-0 flex-1 h-full">
                     <div class="w-9 h-9 rounded-lg border border-dashed border-gray-700 bg-black/60 flex items-center justify-center text-gray-500 text-sm shrink-0">
                         ${(typeof getIcon === 'function') ? getIcon('shield', 'w-4 h-4 text-gray-500') : ''}
                     </div>
-                    <div class="truncate flex-1 min-w-0">
+                    <div class="truncate flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
                         <div class="flex items-center gap-1.5 min-w-0">
                             <span class="text-xs font-semibold text-gray-400 truncate">${typeof t === 'function' ? t('twoHandWeapon') : 'Arma de 2 Manos'}</span>
                             <span class="text-[10px] font-mono text-gray-500 shrink-0">${typeof t === 'function' ? t('twoHand') : '2 Manos'}</span>
                         </div>
-                        <span class="text-[10px] text-gray-500 block truncate mt-0.5">${typeof t === 'function' ? t('freeSlot') : 'Ranura libre / no requerida'}</span>
+                        <span class="text-[10px] text-gray-500 block truncate">${typeof t === 'function' ? t('freeSlot') : 'Ranura libre / no requerida'}</span>
+                        <span class="text-[9px] text-gray-500 italic block truncate">${typeof t === 'function' ? t('covered') : 'Cubierto'}</span>
                     </div>
                 </div>
-                <span class="text-[10px] text-gray-500 italic shrink-0 px-1">${typeof t === 'function' ? t('covered') : 'Cubierto'}</span>
+                <div class="w-8 h-8 rounded-lg border border-gray-800 flex items-center justify-center text-gray-600 shrink-0 select-none">
+                    -
+                </div>
             </div>
         `;
     }
@@ -497,17 +551,18 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
             return renderPaperdollSlotCard(slotKey);
         }
         return `
-            <div data-slot="${label}" title="${label}" class="p-2 rounded-xl border border-gray-800/60 bg-gray-900/20 opacity-50 flex items-center justify-between gap-2 transition">
-                <div class="flex items-center space-x-2.5 min-w-0 flex-1">
+            <div data-slot="${label}" title="${label}" class="h-[74px] min-h-[74px] p-2 rounded-xl border border-gray-800/60 bg-gray-900/20 opacity-50 flex items-center justify-between gap-2 transition shadow-sm">
+                <div class="flex items-center space-x-2.5 min-w-0 flex-1 h-full">
                     <div class="w-9 h-9 rounded-lg border border-dashed border-gray-700 bg-black/50 flex items-center justify-center text-gray-500 text-sm shrink-0">
                         ${iconHtml}
                     </div>
-                    <div class="truncate flex-1 min-w-0">
+                    <div class="truncate flex-1 min-w-0 flex flex-col justify-between h-full py-0.5">
                         <span class="text-xs font-semibold text-gray-400 block truncate">${label}</span>
-                        <span class="text-[10px] text-gray-500 block truncate mt-0.5">${typeof t === 'function' ? t('emptyCosmetic') : 'Ranura Cosmética'}</span>
+                        <span class="text-[10px] text-gray-500 block truncate">${typeof t === 'function' ? t('emptyCosmetic') : 'Ranura Cosmética'}</span>
+                        <span class="text-[9px] text-gray-500 block truncate">${typeof t === 'function' ? t('noSecondaryStats') : 'Sin stats'}</span>
                     </div>
                 </div>
-                <span class="text-[9px] text-gray-500 bg-gray-800/40 px-1.5 py-0.5 rounded border border-gray-700/40 shrink-0">Sin stats</span>
+                <span class="text-[9px] text-gray-500 bg-gray-800/40 px-1.5 py-0.5 rounded border border-gray-700/40 shrink-0 select-none">-</span>
             </div>
         `;
     }
@@ -538,7 +593,7 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
         <div class="space-y-1.5">
             <div class="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 text-center flex items-center justify-center gap-2">
                 <span class="h-px bg-gray-800 flex-1"></span>
-                <span>Armas &bull; Ranuras Principales</span>
+                <span>${typeof t === 'function' ? t('weaponsSlotHeader') : 'Armas &bull; Ranuras Principales'}</span>
                 <span class="h-px bg-gray-800 flex-1"></span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -560,13 +615,13 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
                 </h3>
                 <div class="text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5" style="color: ${classHex};">
                     ${classIconUrl ? `<img src="${classIconUrl}" class="w-4 h-4 rounded-full border border-gray-700 inline" alt="">` : ''}
-                    <span>${specName ? specName + ' ' : ''}${className}</span>
+                    <span>${classSpecTitle}</span>
                 </div>
 
                 <div class="pt-2">
                     <div class="inline-flex flex-col items-center bg-gray-950/80 border ${activeTab === 'optimal' ? 'border-purple-500/40' : (selectedPkg ? (activeTab === 'pkg2' ? 'border-amber-500/40' : 'border-cyan-500/40') : 'border-amber-500/40')} rounded-xl px-4 py-1.5 shadow-lg">
                         <span class="text-[9px] uppercase tracking-widest text-gray-400 font-extrabold">
-                            ${selectedPkg ? 'Nivel de Objeto Proyectado' : 'Nivel de Objeto Medio'}
+                            ${selectedPkg ? (typeof t === 'function' ? t('projectedIlvl') : 'Nivel de Objeto Proyectado') : (typeof t === 'function' ? t('avgIlvl') : 'Nivel de Objeto Medio')}
                         </span>
                         <span class="text-2xl font-black ${activeTab === 'optimal' ? 'text-purple-400 glow-purple' : (selectedPkg ? (activeTab === 'pkg2' ? 'text-amber-400 glow-amber' : 'text-cyan-400 glow-cyan') : 'text-amber-400 glow-amber')} font-mono tracking-tight leading-none mt-0.5">${displayIlvl}</span>
                     </div>

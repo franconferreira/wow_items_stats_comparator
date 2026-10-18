@@ -39,51 +39,84 @@ async function fetchJson(url) {
     throw new Error(`Error de red al consultar ${url}`);
 }
 
-// Fetch helper for Wowhead tooltips
+// Fetch helper for Wowhead tooltips with multilingual locale support and RTG parsing
 async function fetchItemTooltip(itemId, ilvl, bonuses) {
+    const lang = (typeof getLanguage === 'function') ? getLanguage() : 'es';
     const bonusStr = (bonuses || []).join(':');
-    const cacheKey = `${itemId}_${ilvl}_${bonusStr}`;
+    const cacheKey = `${itemId}_${ilvl}_${bonusStr}_${lang}`;
     
     if (tooltipCache.has(cacheKey)) {
         return tooltipCache.get(cacheKey);
     }
     
-    const url = `https://nether.wowhead.com/tooltip/item/${itemId}?ilvl=${ilvl}&bonus=${bonusStr}`;
+    const url = `https://nether.wowhead.com/tooltip/item/${itemId}?ilvl=${ilvl}&bonus=${bonusStr}&locale=${lang}`;
     try {
         const data = await fetchJson(url);
         const tooltipHtml = data.tooltip || '';
         
         const stats = {};
-        // Regex pattern matching secondary stats from tooltip HTML
-        const matches = tooltipHtml.matchAll(/>\+?<!--\w+-->([\d,]+)\s+([^<]+)</g);
-        for (const m of matches) {
-            const val = parseInt(m[1].replace(/,/g, ''), 10);
-            const name = m[2].trim();
-            if (STAT_COLORS[name]) {
-                stats[name] = val;
-            }
-        }
         
-        // Fallback pattern if comment markers are missing
+        // 1. Universal Wowhead RTG stat IDs: 32=Crit, 36=Haste, 49=Mastery, 40=Versatility
+        const rtgMap = {
+            '32': 'Critical Strike',
+            '36': 'Haste',
+            '49': 'Mastery',
+            '40': 'Versatility'
+        };
+
+        const rtgPattern1 = tooltipHtml.matchAll(/<!--rtg(\d+)-->\+?([\d,]+)/g);
+        for (const m of rtgPattern1) {
+            const rtgId = m[1];
+            const val = parseInt(m[2].replace(/,/g, ''), 10);
+            const statName = rtgMap[rtgId];
+            if (statName) stats[statName] = val;
+        }
+
+        const rtgPattern2 = tooltipHtml.matchAll(/\+?([\d,]+)\s*<!--rtg(\d+)-->/g);
+        for (const m of rtgPattern2) {
+            const val = parseInt(m[1].replace(/,/g, ''), 10);
+            const rtgId = m[2];
+            const statName = rtgMap[rtgId];
+            if (statName && !stats[statName]) stats[statName] = val;
+        }
+
+        // 2. Multilingual Name Fallbacks (Spanish & English)
         if (Object.keys(stats).length === 0) {
-            const fallbackMatches = tooltipHtml.matchAll(/\+([\d,]+)\s+(Critical Strike|Haste|Mastery|Versatility)/gi);
-            for (const fm of fallbackMatches) {
-                const val = parseInt(fm[1].replace(/,/g, ''), 10);
-                const statRaw = fm[2].toLowerCase();
-                for (const canonical of Object.keys(STAT_COLORS)) {
-                    if (canonical.toLowerCase() === statRaw) {
-                        stats[canonical] = val;
-                    }
+            const matches = tooltipHtml.matchAll(/>\+?<!--\w+-->([\d,]+)\s+([^<]+)</g);
+            for (const m of matches) {
+                const val = parseInt(m[1].replace(/,/g, ''), 10);
+                const name = m[2].trim().toLowerCase();
+                if (name.includes('crítico') || name.includes('critico') || name.includes('critical strike')) {
+                    stats['Critical Strike'] = val;
+                } else if (name.includes('celeridad') || name.includes('haste')) {
+                    stats['Haste'] = val;
+                } else if (name.includes('maestría') || name.includes('maestria') || name.includes('mastery')) {
+                    stats['Mastery'] = val;
+                } else if (name.includes('versatilidad') || name.includes('versatility')) {
+                    stats['Versatility'] = val;
                 }
             }
         }
         
-        const ilvlMatch = tooltipHtml.match(/Item Level\s*(?:<!--ilvl-->)?\s*(\d+)/i);
+        if (Object.keys(stats).length === 0) {
+            const fallbackMatches = tooltipHtml.matchAll(/\+([\d,]+)\s+(Critical Strike|Haste|Mastery|Versatility|Golpe crítico|Celeridad|Maestría|Versatilidad)/gi);
+            for (const fm of fallbackMatches) {
+                const val = parseInt(fm[1].replace(/,/g, ''), 10);
+                const sRaw = fm[2].toLowerCase();
+                if (sRaw.includes('crítico') || sRaw.includes('crit')) stats['Critical Strike'] = val;
+                else if (sRaw.includes('celeridad') || sRaw.includes('haste')) stats['Haste'] = val;
+                else if (sRaw.includes('maestr') || sRaw.includes('mastery')) stats['Mastery'] = val;
+                else if (sRaw.includes('versat') || sRaw.includes('vers')) stats['Versatility'] = val;
+            }
+        }
+        
+        const ilvlMatch = tooltipHtml.match(/Item Level\s*(?:<!--ilvl-->)?\s*(\d+)/i) || tooltipHtml.match(/Nivel de objeto\s*(?:<!--ilvl-->)?\s*(\d+)/i);
         const resolvedIlvl = ilvlMatch ? parseInt(ilvlMatch[1], 10) : (parseInt(ilvl, 10) || 0);
         const isUse = /(?:Use:|Uso:|Utilizar:)/i.test(tooltipHtml);
+        const cleanName = (typeof cleanWoWString === 'function') ? cleanWoWString(data.name) : data.name;
 
         const result = {
-            name: data.name,
+            name: cleanName,
             icon: data.icon,
             quality: data.quality,
             ilvl: resolvedIlvl,

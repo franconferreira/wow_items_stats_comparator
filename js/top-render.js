@@ -162,7 +162,7 @@ function renderConsensus(players, classSlug, exclude344 = false) {
     const sortedStats = Object.keys(averages).sort((a, b) => averages[b] - averages[a]);
 
     // Render Priority Text
-    const priorityText = sortedStats.map(s => `${STAT_COLORS[s].name} (${percentages[s]}%)`).join(' > ');
+    const priorityText = sortedStats.map(s => `${(typeof getStatName === 'function') ? getStatName(s, true) : STAT_COLORS[s].name} (${percentages[s]}%)`).join(' > ');
     const priorityEl = document.getElementById('stat-priority-text');
     if (priorityEl) {
         priorityEl.textContent = priorityText;
@@ -175,13 +175,14 @@ function renderConsensus(players, classSlug, exclude344 = false) {
         sortedStats.forEach(st => {
             const pct = percentages[st];
             if (pct > 0) {
+                const sName = (typeof getStatName === 'function') ? getStatName(st, true) : STAT_COLORS[st].name;
                 const seg = document.createElement('div');
                 seg.style.width = `${pct}%`;
                 seg.style.backgroundColor = STAT_COLORS[st].color;
                 seg.className = 'h-full transition-all duration-500 relative group flex items-center justify-center text-xs font-bold text-black';
-                seg.title = `${STAT_COLORS[st].name}: ${pct}% (Promedio: ${averages[st]})`;
+                seg.title = `${sName}: ${pct}% (${(typeof t === 'function') ? t('top50Avg') : 'Promedio'}: ${averages[st]})`;
                 if (parseFloat(pct) > 12) {
-                    seg.textContent = `${STAT_COLORS[st].name} ${pct}%`;
+                    seg.textContent = `${sName} ${pct}%`;
                 }
                 distBar.appendChild(seg);
             }
@@ -193,17 +194,18 @@ function renderConsensus(players, classSlug, exclude344 = false) {
     if (avgCardsContainer) {
         avgCardsContainer.innerHTML = '';
         sortedStats.forEach(st => {
+            const cardName = (typeof getStatName === 'function') ? getStatName(st) : STAT_COLORS[st].name;
             const card = document.createElement('div');
             card.className = 'bg-gray-800/80 border border-gray-700/60 rounded-xl p-4 flex flex-col justify-between';
             card.style.borderTop = `3px solid ${STAT_COLORS[st].color}`;
 
             card.innerHTML = `
                 <div class="flex items-center justify-between">
-                    <span class="text-sm font-semibold text-gray-300">${STAT_COLORS[st].name}</span>
+                    <span class="text-sm font-semibold text-gray-300">${cardName}</span>
                     <span class="text-xs px-2 py-0.5 rounded-full font-bold" style="background-color: ${STAT_COLORS[st].bg}; color: ${STAT_COLORS[st].color}">${percentages[st]}%</span>
                 </div>
                 <div class="mt-2 text-2xl font-black text-white">${averages[st].toLocaleString()}</div>
-                <div class="mt-1 text-xs text-gray-400">Promedio Top ${count} ${exclude344 ? '(sin ilvl 344)' : ''}</div>
+                <div class="mt-1 text-xs text-gray-400">${typeof t === 'function' ? t('top50Avg') : 'Promedio Top ' + count} ${exclude344 ? '(sin ilvl 344)' : ''}</div>
             `;
             avgCardsContainer.appendChild(card);
         });
@@ -220,9 +222,9 @@ function renderPopularItems(players) {
 
     // Count items by slot categories
     const categories = [
-        { title: 'Abalorios Más Elegidos (Trinkets)', slots: ['trinket1', 'trinket2'], maxItems: 3 },
-        { title: 'Armas Más Elegidas (Weapons)', slots: ['mainhand', 'offhand'], maxItems: 2 },
-        { title: 'Anillos Más Elegidos (Rings)', slots: ['finger1', 'finger2'], maxItems: 3 }
+        { title: (typeof t === 'function') ? t('topTrinkets') : 'Abalorios Más Elegidos (Trinkets)', slots: ['trinket1', 'trinket2'], maxItems: 3 },
+        { title: (typeof t === 'function') ? t('topWeapons') : 'Armas Más Elegidas (Weapons)', slots: ['mainhand', 'offhand'], maxItems: 2 },
+        { title: (typeof t === 'function') ? t('topRings') : 'Anillos Más Elegidos (Rings)', slots: ['finger1', 'finger2'], maxItems: 3 }
     ];
 
     categories.forEach(cat => {
@@ -417,11 +419,13 @@ function renderGemsAndEnchants(players) {
             const gems = it.gems || [];
             gems.forEach(g => {
                 if (!g || !g.name) return;
+                const cleanName = (typeof cleanWoWString === 'function') ? cleanWoWString(g.name) : g.name;
+                if (!cleanName) return;
                 totalGemsCount++;
-                const key = g.name;
+                const key = cleanName;
                 if (!gemMap.has(key)) {
                     gemMap.set(key, {
-                        name: g.name,
+                        name: cleanName,
                         icon: g.icon,
                         id: g.id,
                         count: 0,
@@ -439,14 +443,20 @@ function renderGemsAndEnchants(players) {
     if (gemsContainer) {
         gemsContainer.innerHTML = '';
         const sortedGems = Array.from(gemMap.values()).sort((a, b) => b.count - a.count);
+        const isEn = (typeof getLanguage === 'function' && getLanguage() === 'en');
 
         if (sortedGems.length === 0) {
-            gemsContainer.innerHTML = '<p class="text-xs text-gray-500 py-3 text-center">No se encontraron ranuras con gemas engarzadas.</p>';
+            gemsContainer.innerHTML = `<p class="text-xs text-gray-500 py-3 text-center">${isEn ? 'No socketed gems found.' : 'No se encontraron ranuras con gemas engarzadas.'}</p>`;
         } else {
             sortedGems.slice(0, 6).forEach(g => {
                 const pctShare = totalGemsCount > 0 ? Math.round((g.count / totalGemsCount) * 100) : 0;
                 const playerPct = Math.round((g.players.size / count) * 100);
                 const iconUrl = g.icon ? `https://wow.zamimg.com/images/wow/icons/medium/${g.icon}.jpg` : 'https://wow.zamimg.com/images/wow/icons/medium/inv_misc_questionmark.jpg';
+                const usageText = isEn
+                    ? `Used by ${g.players.size} of ${count} players (${playerPct}%)`
+                    : `Usada por ${g.players.size} de ${count} jugadores (${playerPct}%)`;
+                const socketBadge = isEn ? `${g.count} sockets` : `${g.count} engarces`;
+                const shareText = isEn ? `${pctShare}% of total` : `${pctShare}% del total`;
 
                 const gemEl = document.createElement('div');
                 gemEl.className = 'flex items-center justify-between p-2.5 bg-gray-900/60 border border-gray-700/50 rounded-xl hover:border-emerald-500/40 transition-colors';
@@ -455,12 +465,12 @@ function renderGemsAndEnchants(players) {
                         <img src="${iconUrl}" class="w-8 h-8 rounded-lg border border-emerald-500/40 shrink-0" alt="${g.name}">
                         <div class="truncate">
                             <span class="text-xs font-bold text-emerald-300 block truncate">${g.name}</span>
-                            <span class="text-[11px] text-gray-400">Usada por ${g.players.size} de ${count} jugadores (${playerPct}%)</span>
+                            <span class="text-[11px] text-gray-400">${usageText}</span>
                         </div>
                     </div>
                     <div class="text-right shrink-0 ml-3">
-                        <span class="text-xs font-extrabold text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-full">${g.count} engarces</span>
-                        <div class="text-[10px] text-gray-400 mt-0.5">${pctShare}% del total</div>
+                        <span class="text-xs font-extrabold text-emerald-300 bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-full">${socketBadge}</span>
+                        <div class="text-[10px] text-gray-400 mt-0.5">${shareText}</div>
                     </div>
                 `;
                 gemsContainer.appendChild(gemEl);
@@ -470,21 +480,22 @@ function renderGemsAndEnchants(players) {
 
     // --- B. Aggregate Enchants by Slot Category ---
     const ENCHANT_CATEGORIES = [
-        { label: 'Pecho', slots: ['chest'] },
-        { label: 'Piernas', slots: ['legs'] },
-        { label: 'Casco', slots: ['head'] },
-        { label: 'Botas', slots: ['feet'] },
-        { label: 'Hombros', slots: ['shoulder'] },
-        { label: 'Anillos', slots: ['finger1', 'finger2'] },
-        { label: 'Arma', slots: ['mainhand', 'offhand'] },
-        { label: 'Muñecas', slots: ['wrist'] },
-        { label: 'Capa', slots: ['back'] }
+        { label: 'chest', slots: ['chest'] },
+        { label: 'legs', slots: ['legs'] },
+        { label: 'head', slots: ['head'] },
+        { label: 'feet', slots: ['feet'] },
+        { label: 'shoulder', slots: ['shoulder'] },
+        { label: 'finger', slots: ['finger1', 'finger2'] },
+        { label: 'mainhand', slots: ['mainhand', 'offhand'] },
+        { label: 'wrist', slots: ['wrist'] },
+        { label: 'back', slots: ['back'] }
     ];
 
     const enchantsContainer = document.getElementById('popular-enchants-container');
     if (enchantsContainer) {
         enchantsContainer.innerHTML = '';
         let totalEnchantedSlots = 0;
+        const isEn = (typeof getLanguage === 'function' && getLanguage() === 'en');
 
         ENCHANT_CATEGORIES.forEach(cat => {
             const enchMap = new Map();
@@ -496,10 +507,12 @@ function renderGemsAndEnchants(players) {
                     const enchants = it.enchants || [];
                     enchants.forEach(e => {
                         if (!e || !e.name) return;
-                        const key = e.name;
+                        const cleanName = (typeof cleanWoWString === 'function') ? cleanWoWString(e.name) : e.name;
+                        if (!cleanName) return;
+                        const key = cleanName;
                         if (!enchMap.has(key)) {
                             enchMap.set(key, {
-                                name: e.name,
+                                name: cleanName,
                                 icon: e.icon,
                                 id: e.id,
                                 count: 0,
@@ -520,6 +533,8 @@ function renderGemsAndEnchants(players) {
             const topEnch = sortedEnchs[0];
             const playerPct = Math.round((topEnch.players.size / count) * 100);
             const iconUrl = topEnch.icon ? `https://wow.zamimg.com/images/wow/icons/medium/${topEnch.icon}.jpg` : 'https://wow.zamimg.com/images/wow/icons/medium/inv_misc_questionmark.jpg';
+            const catLabel = (typeof getSlotName === 'function') ? getSlotName(cat.label) : cat.label;
+            const playerSuffix = isEn ? 'players' : 'jug.';
 
             const row = document.createElement('div');
             row.className = 'flex items-center justify-between p-2.5 bg-gray-900/60 border border-gray-700/50 rounded-xl hover:border-purple-500/40 transition-colors';
@@ -535,7 +550,7 @@ function renderGemsAndEnchants(players) {
                     <img src="${iconUrl}" class="w-8 h-8 rounded-lg border border-purple-500/40 shrink-0" alt="${topEnch.name}">
                     <div class="truncate">
                         <div class="flex items-center gap-1.5">
-                            <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">${cat.label}</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">${catLabel}</span>
                             <span class="text-xs font-bold text-gray-200 truncate">${topEnch.name}</span>
                         </div>
                         ${runnerUpText}
@@ -543,14 +558,14 @@ function renderGemsAndEnchants(players) {
                 </div>
                 <div class="text-right shrink-0 ml-3">
                     <span class="text-xs font-extrabold text-purple-300 bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 rounded-full">${playerPct}%</span>
-                    <div class="text-[10px] text-gray-400 mt-0.5">${topEnch.players.size}/${count} jug.</div>
+                    <div class="text-[10px] text-gray-400 mt-0.5">${topEnch.players.size}/${count} ${playerSuffix}</div>
                 </div>
             `;
             enchantsContainer.appendChild(row);
         });
 
         if (totalEnchantedSlots === 0) {
-            enchantsContainer.innerHTML = '<p class="text-xs text-gray-500 py-3 text-center">No se detectaron encantamientos activos en las piezas analizadas.</p>';
+            enchantsContainer.innerHTML = `<p class="text-xs text-gray-500 py-3 text-center">${isEn ? 'No active enchantments detected on analyzed gear.' : 'No se detectaron encantamientos activos en las piezas analizadas.'}</p>`;
         }
     }
 }
@@ -796,7 +811,7 @@ function renderPlayerTable(players, exclude344 = false) {
             <td class="py-3 px-4 font-bold" style="color: ${STAT_COLORS['Versatility'].color}">${versVal.toLocaleString()}</td>
             <td class="py-3 px-4 text-center">
                 <button onclick="togglePlayerGear('gear-row-${idx}')" class="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-xs font-semibold text-white rounded-lg transition-colors">
-                    Ver Equipo
+                    ${typeof t === 'function' ? t('viewGear') : 'Ver Equipo'}
                 </button>
             </td>
         `;
@@ -809,17 +824,20 @@ function renderPlayerTable(players, exclude344 = false) {
 
         let gearGridHtml = '';
         const slotsOrder = ['head', 'neck', 'shoulder', 'back', 'chest', 'wrist', 'hands', 'waist', 'legs', 'feet', 'finger1', 'finger2', 'trinket1', 'trinket2', 'mainhand', 'offhand'];
+        const isEn = (typeof getLanguage === 'function' && getLanguage() === 'en');
 
         slotsOrder.forEach(slot => {
             const it = p.itemDetails[slot];
             if (!it || !it.item_id) return;
             const iconUrl = it.icon ? `https://wow.zamimg.com/images/wow/icons/small/${it.icon}.jpg` : '';
             const bonusStr = (it.bonuses || []).join(':');
+            const cleanItName = (typeof cleanWoWString === 'function') ? cleanWoWString(it.name) : it.name;
 
             // Format secondary stats
             const statChips = Object.entries(it.stats).map(([sName, sVal]) => {
                 const conf = STAT_COLORS[sName];
-                return `<span class="text-[10px] px-1 py-0.5 rounded font-bold" style="background-color: ${conf.bg}; color: ${conf.color}">+${sVal} ${conf.name}</span>`;
+                const displayName = (typeof getStatName === 'function') ? getStatName(sName, true) : (conf?.name || sName);
+                return `<span class="text-[10px] px-1 py-0.5 rounded font-bold" style="background-color: ${conf.bg}; color: ${conf.color}">+${sVal} ${displayName}</span>`;
             }).join(' ');
 
             const isExcluded = exclude344 && it.ilvl === 344;
@@ -827,7 +845,7 @@ function renderPlayerTable(players, exclude344 = false) {
                 ? 'p-1.5 bg-amber-950/20 rounded border border-amber-500/50 opacity-70'
                 : 'p-1.5 bg-gray-800/60 rounded border border-gray-700/40';
             const excludedBadge = isExcluded
-                ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">Omitido</span>'
+                ? `<span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">${isEn ? 'Omitted' : 'Omitido'}</span>`
                 : '';
 
             gearGridHtml += `
@@ -836,7 +854,7 @@ function renderPlayerTable(players, exclude344 = false) {
                     <div class="truncate text-xs flex-1">
                         <div class="flex items-center justify-between">
                             <a href="https://www.wowhead.com/item=${it.item_id}" data-wowhead="item=${it.item_id}&ilvl=${it.ilvl}&bonus=${bonusStr}" class="text-yellow-400 hover:underline truncate block font-medium">
-                                ${it.name}
+                                ${cleanItName}
                             </a>
                             ${excludedBadge}
                         </div>
@@ -849,11 +867,18 @@ function renderPlayerTable(players, exclude344 = false) {
             `;
         });
 
+        const gearHeading = isEn
+            ? `Gear for ${p.name} ${p.runInfo ? `<span class="text-amber-400 font-normal">(Verified snapshot in +${p.runInfo.level} ${(typeof getLocalizedDungeonName === 'function') ? getLocalizedDungeonName(p.runInfo.dungeon) : p.runInfo.dungeon})</span>` : ''}`
+            : `Equipamiento de ${p.name} ${p.runInfo ? `<span class="text-amber-400 font-normal">(Snapshot verificado en +${p.runInfo.level} ${(typeof getLocalizedDungeonName === 'function') ? getLocalizedDungeonName(p.runInfo.dungeon) : p.runInfo.dungeon})</span>` : ''}`;
+        const excludedNotice = isEn
+            ? `${excludedItems} ilvl 344 items excluded from calculation`
+            : `${excludedItems} ítems ilvl 344 excluidos del cálculo`;
+
         gearRow.innerHTML = `
             <td colspan="10" class="p-4">
                 <div class="flex items-center justify-between mb-2">
-                    <div class="text-xs font-bold uppercase tracking-wider text-gray-400">Equipamiento de ${p.name} ${p.runInfo ? `<span class="text-amber-400 font-normal">(Snapshot verificado en +${p.runInfo.level} ${p.runInfo.dungeon})</span>` : ''}</div>
-                    ${exclude344 && excludedItems > 0 ? `<span class="text-[11px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">${excludedItems} ítems ilvl 344 excluidos del cálculo</span>` : ''}
+                    <div class="text-xs font-bold uppercase tracking-wider text-gray-400">${gearHeading}</div>
+                    ${exclude344 && excludedItems > 0 ? `<span class="text-[11px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">${excludedNotice}</span>` : ''}
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                     ${gearGridHtml}
