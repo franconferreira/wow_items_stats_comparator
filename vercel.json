@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "name": "wow-top10-stats",
+  "cleanUrls": true,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    }
+  ]
+}
