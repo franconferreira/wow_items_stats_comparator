@@ -443,8 +443,10 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                     if (!topTrinketMap.has(it.item_id)) {
                         let bossName = 'Jefe de Banda';
                         let raidName = 'Banda de Temporada';
-                        let bossNpcId = 231450;
-                        let bossIcon = 'achievement_boss_generalvezax';
+                        let bossNpcId = null;
+                        let bossSlug = '';
+                        let bossImage = null;
+                        let bossIcon = 'inv_misc_head_dragon_black';
                         let isRaid = false;
 
                         for (const r of raids) {
@@ -452,7 +454,9 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                                 if (b.patterns && b.patterns.some(pat => it.name.toLowerCase().includes(pat.toLowerCase()))) {
                                     bossName = b.name;
                                     raidName = r.raidName;
-                                    bossNpcId = b.npcId || bossNpcId;
+                                    bossNpcId = b.npcId || null;
+                                    bossSlug = b.slug || '';
+                                    bossImage = b.bossImage || null;
                                     bossIcon = b.bossIcon || bossIcon;
                                     isRaid = true;
                                     break;
@@ -476,6 +480,8 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                             dungeon: isRaid ? raidName : (dItem ? dItem.dungeon : 'Mítica+'),
                             boss: isRaid ? bossName : (dItem ? dItem.boss : 'Jefe de Mazmorra'),
                             bossNpcId: isRaid ? bossNpcId : null,
+                            bossSlug: isRaid ? bossSlug : '',
+                            bossImage: isRaid ? bossImage : null,
                             bossIcon: isRaid ? bossIcon : null,
                             isUse: isUse,
                             itemType: isRaid ? 'raid' : 'dungeon',
@@ -489,7 +495,10 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                         let bossName = 'Jefe de Banda';
                         let raidName = 'Banda de Temporada';
                         let bossTitle = '';
-                        let bossIcon = 'achievement_boss_yoggsaron_01';
+                        let bossIcon = 'inv_misc_head_dragon_black';
+                        let bossNpcId = null;
+                        let bossSlug = '';
+                        let bossImage = null;
 
                         for (const r of raids) {
                             for (const b of r.bosses) {
@@ -498,6 +507,9 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                                     bossTitle = b.title || '';
                                     raidName = r.raidName;
                                     bossIcon = b.bossIcon || bossIcon;
+                                    bossNpcId = b.npcId || null;
+                                    bossSlug = b.slug || '';
+                                    bossImage = b.bossImage || null;
                                     break;
                                 }
                                 if (b.tierSlot && b.tierSlot === canonical) {
@@ -505,6 +517,9 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                                     bossTitle = b.title || '';
                                     raidName = r.raidName;
                                     bossIcon = b.bossIcon || bossIcon;
+                                    bossNpcId = b.npcId || null;
+                                    bossSlug = b.slug || '';
+                                    bossImage = b.bossImage || null;
                                     break;
                                 }
                             }
@@ -521,6 +536,9 @@ function findOptimalDungeonPackages(userItemsDetails, lockedSlots, targetPcts, a
                             boss: bossName,
                             bossTitle: bossTitle,
                             bossIcon: bossIcon,
+                            bossNpcId: bossNpcId,
+                            bossSlug: bossSlug,
+                            bossImage: bossImage,
                             itemType: 'raid',
                             playerCount: 0
                         });

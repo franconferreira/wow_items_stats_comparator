@@ -13,13 +13,18 @@ const SEASON_RAID_DATA = {
                 {
                     name: "Ula'tek",
                     title: 'Último Jefe de Banda (Encounter 8)',
-                    bossIcon: 'achievement_boss_yoggsaron_01',
+                    npcId: 268956,
+                    slug: 'ulatek',
+                    bossImage: 'https://wow.zamimg.com/images/wow/journal/ui-ej-boss-ulatek.png',
+                    bossIcon: 'inv_misc_head_dragon_green',
                     patterns: ["Voracious Heart of Ula'tek", "Aqirbane Reliquary", "Chausses of Unbound Rancor", "Breath of Ula'tek", "Keeper's Seething Core", "Ula'tek"],
                     tierToken: 'Omnitoken de Tier (Cualquier ranura / Curio)'
                 },
                 {
                     name: 'The Coiled Altar',
                     title: 'Encuentro 7',
+                    npcId: 268430,
+                    slug: 'kursak-the-coiled',
                     bossIcon: 'inv_relics_idolofrejuvenation',
                     patterns: ['Coiled Altar', 'Coiled'],
                     tierSlot: 'head',
@@ -36,6 +41,9 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'Sszorak',
                     title: 'Encuentro 5',
+                    npcId: 257347,
+                    slug: 'sszorak',
+                    bossImage: 'https://wow.zamimg.com/images/wow/journal/ui-ej-boss-brute.png',
                     bossIcon: 'inv_misc_monsterhead_03',
                     patterns: ["Apex Brute's Claw Ring", 'Sszorak'],
                     tierSlot: 'chest',
@@ -44,6 +52,8 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'Vashnik the Malignant',
                     title: 'Encuentro 4',
+                    npcId: 259181,
+                    slug: 'vashnik',
                     bossIcon: 'inv_potion_68',
                     patterns: ["Scaled Fiend's Warboots", "Vile Alchemist's Band", 'Vashnik'],
                     tierSlot: 'legs',
@@ -66,6 +76,8 @@ const SEASON_RAID_DATA = {
                 {
                     name: "Nek'zali the Soulcoiler",
                     title: 'Encuentro 1',
+                    npcId: 259927,
+                    slug: 'nekzali-the-soulcoiler',
                     bossIcon: 'inv_misc_head_troll_01',
                     patterns: ["Entombed Cultist's Sabatons", "Amani Summoning Shawl", "Nek'zali", "Soulcoiler"]
                 }
@@ -79,7 +91,8 @@ const SEASON_RAID_DATA = {
                     name: "Hex Lord Malacrass / Zul'jan",
                     title: 'Jefe Supremo',
                     npcId: 24239,
-                    bossIcon: 'achievement_character_troll_male',
+                    slug: 'hex-lord-malacrass',
+                    bossIcon: 'achievement_boss_zuljin',
                     patterns: ["Zul'jin's Guillotine Technique", "Maze-roa, Warlord's Fury", "Silken Voodoo Drape", "Girdle of Toxic Regret", "Malacrass", "Zul'jin", "Zul'jan"]
                 }
             ]
@@ -91,18 +104,26 @@ const SEASON_RAID_DATA = {
                 {
                     name: 'Nymrissa Wavecaller',
                     title: 'The Tidebound Grotto',
+                    npcId: 252959,
+                    slug: 'nymrissa-wavecaller',
+                    bossImage: 'https://wow.zamimg.com/images/wow/journal/ui-ej-boss-nagasorcerer.png',
                     bossIcon: 'ability_druid_primaltenacity',
                     patterns: ['Alluring Bubbleband', 'Swelling Sea Spaulders', 'Nymrissa', 'Wavecaller']
                 },
                 {
                     name: 'Rotmire',
                     title: 'Sporefall',
+                    npcId: 254176,
+                    slug: 'rotmire',
+                    bossImage: 'https://wow.zamimg.com/images/wow/journal/ui-ej-boss-fungariangiant.png',
                     bossIcon: 'spell_shadow_plaguecloud',
                     patterns: ['Rotmire', 'Sporefall']
                 },
                 {
                     name: "Kith'ix",
                     title: "The Unbinding of Kith'ix",
+                    npcId: 267861,
+                    slug: 'kithix',
                     bossIcon: 'achievement_boss_hakkar',
                     patterns: ["Kith'ix", 'Kithix']
                 }

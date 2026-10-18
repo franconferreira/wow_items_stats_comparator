@@ -361,21 +361,19 @@ function renderSimCComparisonResults(parsedProfile, userStats, userItemsDetails,
             // Right action element: for raid items, display verified boss portrait with authentic Wowhead popup on hover
             let rightActionHtml = '';
             if (dropItem.itemType === 'raid') {
-                const bossIcon = dropItem.bossIcon || 'achievement_boss_yoggsaron_01';
-                const bossTitleText = dropItem.bossTitle || (typeof t === 'function' ? t('raidBoss') : 'Jefe de Banda');
+                const bossNpc = dropItem.bossNpcId;
+                const bossSlug = dropItem.bossSlug ? `/${dropItem.bossSlug}` : '';
+                const bossHref = bossNpc
+                    ? `https://www.wowhead.com/npc=${bossNpc}${bossSlug}`
+                    : `https://www.wowhead.com/search?q=${encodeURIComponent(dropItem.boss)}`;
+                const wowheadAttr = bossNpc ? `data-wowhead="npc=${bossNpc}"` : '';
+                const bossImgSrc = dropItem.bossImage || (dropItem.bossIcon ? `https://wow.zamimg.com/images/wow/icons/medium/${dropItem.bossIcon}.jpg` : 'https://wow.zamimg.com/images/wow/icons/medium/achievement_boss_zuljin.jpg');
 
                 rightActionHtml = `
-                    <div class="group relative flex items-center shrink-0">
-                        <a href="https://www.wowhead.com/search?q=${encodeURIComponent(dropItem.boss)}" target="_blank" class="w-8 h-8 rounded-lg border border-red-500/50 bg-red-950/80 p-0.5 flex items-center justify-center shrink-0 shadow-sm overflow-hidden hover:border-red-400 transition cursor-pointer" title="${typeof t === 'function' ? t('boss') : 'Jefe'}: ${localizedBoss} (${localizedDungeon})">
-                            <img src="https://wow.zamimg.com/images/wow/icons/medium/${bossIcon}.jpg" class="w-full h-full object-cover rounded" alt="${localizedBoss}" onerror="this.src='https://wow.zamimg.com/images/wow/icons/medium/inv_misc_head_dragon_black.jpg'">
+                    <div class="relative flex items-center shrink-0">
+                        <a href="${bossHref}" ${wowheadAttr} target="_blank" rel="noopener noreferrer" class="w-8 h-8 rounded-lg border border-red-500/50 bg-[#0d1424] p-0.5 flex items-center justify-center shrink-0 shadow-sm overflow-hidden hover:border-red-400 hover:shadow-[0_0_8px_rgba(239,68,68,0.5)] transition cursor-pointer" ${bossNpc ? '' : `title="${typeof t === 'function' ? t('boss') : 'Jefe'}: ${localizedBoss} (${localizedDungeon})"`}>
+                            <img src="${bossImgSrc}" class="w-full h-full object-cover scale-110 rounded" alt="${localizedBoss}" onerror="this.src='https://wow.zamimg.com/images/wow/icons/medium/achievement_boss_zuljin.jpg'">
                         </a>
-                        <div class="pointer-events-none absolute bottom-full right-0 mb-2 hidden group-hover:block z-50 w-64 p-3 rounded-lg border border-[#404040] bg-[#070d19]/95 text-xs shadow-2xl backdrop-blur-md">
-                            <div class="text-[#ffd100] font-bold text-sm leading-tight">${localizedBoss}</div>
-                            <div class="text-[#ffff00] text-[11px] mt-0.5">${localizedDungeon}</div>
-                            <div class="text-gray-300 text-[10px] mt-1 italic">${bossTitleText}</div>
-                            <div class="border-t border-gray-700/60 my-1.5"></div>
-                            <div class="text-[#1eff00] text-[10px] font-medium">${typeof t === 'function' ? t('raidLootS2') : 'Loot de Banda • Temporada 2'}</div>
-                        </div>
                     </div>
                 `;
             } else {
