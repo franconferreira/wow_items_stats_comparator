@@ -159,6 +159,11 @@ async function handleSimCCompare() {
             needsNewAnalysis = true;
         } else if (parsedProfile.spec && cachedSpecSlug && parsedProfile.spec !== cachedSpecSlug) {
             needsNewAnalysis = true;
+        } else if (cachedPlayers.some(p => {
+            const specObj = WOW_CLASSES[currentClass]?.specs?.find(s => s.slug === currentSpec);
+            return p.spec && specObj && p.spec.toLowerCase() !== specObj.name.toLowerCase();
+        })) {
+            needsNewAnalysis = true;
         }
 
         if (needsNewAnalysis) {

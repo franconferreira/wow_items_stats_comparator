@@ -27,13 +27,13 @@ async function startAnalysis() {
         const specObj = WOW_CLASSES[classSlug]?.specs?.find(s => s.slug === specSlug);
         const roleParam = specObj?.role || 'all';
         const TARGET_PLAYER_COUNT = 50;
-        const MAX_PAGES = 5;
-        const collectedRankedChars = [];
+        const MAX_PAGES = 8;
+        const candidatePool = [];
         
         setProgress(10, `Buscando Top ${TARGET_PLAYER_COUNT} jugadores de ${specObj?.name || specSlug} en Raider.IO...`);
         
-        // 1. Fetch Leaderboard with pagination, strictly filtering to the selected specialization
-        for (let page = 0; page < MAX_PAGES && collectedRankedChars.length < TARGET_PLAYER_COUNT; page++) {
+        // 1. Fetch Leaderboard with pagination to gather candidate pool
+        for (let page = 0; page < MAX_PAGES && candidatePool.length < 80; page++) {
             const lbUrl = `https://raider.io/api/mythic-plus/rankings/characters?region=${regionSlug}&season=${seasonSlug}&class=${classSlug}&role=${roleParam}&page=${page}`;
             const lbData = await fetchJson(lbUrl);
             
@@ -42,94 +42,110 @@ async function startAnalysis() {
             
             for (const r of rawRankings) {
                 if (r.character?.spec?.slug === specSlug) {
-                    collectedRankedChars.push(r);
-                    if (collectedRankedChars.length >= TARGET_PLAYER_COUNT) break;
+                    candidatePool.push(r);
                 }
             }
             
             if (rawRankings.length < 100) break;
         }
+
+        // Secondary collection pass: If fewer than 70 candidates have the spec slug on their profile,
+        // gather other class players to inspect if they ran keys in the target spec
+        if (candidatePool.length < 70) {
+            for (let page = 0; page < MAX_PAGES && candidatePool.length < 80; page++) {
+                const lbUrl = `https://raider.io/api/mythic-plus/rankings/characters?region=${regionSlug}&season=${seasonSlug}&class=${classSlug}&role=${roleParam}&page=${page}`;
+                const lbData = await fetchJson(lbUrl);
+                const rawRankings = lbData?.rankings?.rankedCharacters || [];
+                for (const r of rawRankings) {
+                    if (!candidatePool.some(c => c.character?.name === r.character?.name && c.character?.realm?.slug === r.character?.realm?.slug)) {
+                        candidatePool.push(r);
+                        if (candidatePool.length >= 80) break;
+                    }
+                }
+                if (rawRankings.length < 100) break;
+            }
+        }
         
-        const topPlayers = collectedRankedChars.slice(0, TARGET_PLAYER_COUNT);
-        if (topPlayers.length === 0) {
+        if (candidatePool.length === 0) {
             throw new Error(`No se encontraron jugadores para la especialización ${specObj?.name || specSlug} en el ranking.`);
         }
         
-        setProgress(20, `Se encontraron ${topPlayers.length} jugadores (${specObj?.name || specSlug}). Descargando perfiles y equipamiento verificado...`);
+        setProgress(20, `Analizando candidatos para ${specObj?.name || specSlug}. Verificando que cada jugador use exactamente esta especialidad...`);
         
-        // 2. Fetch Profiles & Gear Snapshots using a concurrency pool (10 workers)
-        let completedPlayers = 0;
+        // 2. Fetch Profiles & Gear Snapshots with STRICT SPEC VERIFICATION using worker pool
         const CONCURRENCY = 10;
-        const loadedPlayersResults = new Array(topPlayers.length);
         
-        async function fetchSinglePlayerGear(rankedChar, idx) {
+        async function fetchSinglePlayerGear(rankedChar) {
             const char = rankedChar.character;
-            const rankNum = rankedChar.rank || (idx + 1);
+            const rankNum = rankedChar.rank || 0;
             const score = rankedChar.score;
             const runs = rankedChar.runs || [];
             
             let gearItems = null;
             let equippedIlvl = 0;
             let runInfo = null;
-            let playerSpec = char.spec?.name || '';
+            let playerSpec = null;
             let profileUrl = `https://raider.io/characters/${char.region.slug}/${char.realm.slug}/${encodeURIComponent(char.name)}`;
             let thumbnailUrl = '';
 
-            // Step A: Find the player's best run (highest mythicLevel, then highest score)
-            let bestRun = null;
-            if (runs.length > 0) {
-                const sortedRuns = [...runs].sort((a, b) => (b.mythicLevel || 0) - (a.mythicLevel || 0) || (b.score || 0) - (a.score || 0));
-                bestRun = sortedRuns[0];
-            }
+            // Step A: Search player's runs (ordered by mythicLevel desc, then score desc)
+            // for an authentic run verified to be played in the target spec
+            const sortedRuns = [...runs].sort((a, b) => (b.mythicLevel || 0) - (a.mythicLevel || 0) || (b.score || 0) - (a.score || 0));
 
-            // Step B: Query the run-details to get the authentic gear snapshot worn during that M+ run
-            if (bestRun && bestRun.keystoneRunId) {
+            for (const bestRun of sortedRuns) {
+                if (!bestRun.keystoneRunId) continue;
                 const runUrl = `https://raider.io/api/v1/mythic-plus/run-details?season=${seasonSlug}&id=${bestRun.keystoneRunId}`;
                 try {
                     const runData = await fetchJson(runUrl);
                     const roster = runData.roster || [];
-                    for (const m of roster) {
-                        if (m.character?.name?.toLowerCase() === char.name.toLowerCase()) {
+                    const m = roster.find(mem => mem.character?.name?.toLowerCase() === char.name.toLowerCase());
+                    if (m && m.character?.spec) {
+                        const mSlug = m.character.spec.slug;
+                        const mName = m.character.spec.name;
+                        const isTargetSpec = mSlug === specSlug || (specObj && mName.toLowerCase() === specObj.name.toLowerCase());
+                        if (isTargetSpec) {
                             const rawGear = m.items?.items || {};
                             if (Object.keys(rawGear).length > 0) {
                                 gearItems = rawGear;
                                 equippedIlvl = m.items?.item_level_equipped || 0;
-                                playerSpec = m.character?.spec?.name || playerSpec;
+                                playerSpec = mName;
                                 runInfo = {
                                     dungeon: runData.dungeon?.name || 'Mítica+',
                                     level: runData.mythic_level || bestRun.mythicLevel,
                                     runId: bestRun.keystoneRunId
                                 };
+                                break; // Found authentic run in target spec!
                             }
-                            break;
                         }
                     }
                 } catch (err) {
-                    console.warn(`No se pudo obtener la run ${bestRun.keystoneRunId} para ${char.name}, recurriendo a perfil:`, err);
+                    console.warn(`No se pudo obtener la run ${bestRun.keystoneRunId} para ${char.name}:`, err);
                 }
             }
 
-            // Step C: Fallback to active equipped profile if run-details was not found
+            // Step B: Fallback to active equipped profile ONLY IF active spec matches the target spec
             if (!gearItems) {
                 const pUrl = `https://raider.io/api/v1/characters/profile?region=${char.region.slug}&realm=${char.realm.slug}&name=${encodeURIComponent(char.name)}&fields=gear`;
                 try {
                     const pData = await fetchJson(pUrl);
-                    gearItems = pData.gear?.items || {};
-                    equippedIlvl = pData.gear?.item_level_equipped || 0;
-                    playerSpec = pData.active_spec_name || playerSpec;
-                    thumbnailUrl = pData.thumbnail_url || '';
-                    profileUrl = pData.profile_url || profileUrl;
+                    const activeSpec = pData.active_spec_name || '';
+                    const isTargetSpec = specObj && activeSpec.toLowerCase() === specObj.name.toLowerCase();
+                    if (isTargetSpec) {
+                        gearItems = pData.gear?.items || {};
+                        equippedIlvl = pData.gear?.item_level_equipped || 0;
+                        playerSpec = activeSpec;
+                        thumbnailUrl = pData.thumbnail_url || '';
+                        profileUrl = pData.profile_url || profileUrl;
+                    }
                 } catch (err) {
                     console.warn(`Error al cargar perfil de ${char.name}:`, err);
                 }
             }
 
-            completedPlayers++;
-            const currentPct = 20 + Math.floor((completedPlayers / topPlayers.length) * 45);
-            const runLabel = runInfo ? ` (+${runInfo.level} ${runInfo.dungeon})` : '';
-            setProgress(currentPct, `Obtenido equipo verificado de ${char.name}${runLabel} (${completedPlayers}/${topPlayers.length})...`);
-
-            if (!gearItems) return null;
+            // Step C: STRICT SPEC VALIDATION - Discard completely if not playing target spec
+            if (!gearItems || !playerSpec || (specObj && playerSpec.toLowerCase() !== specObj.name.toLowerCase())) {
+                return null;
+            }
 
             return {
                 rank: rankNum,
@@ -148,24 +164,49 @@ async function startAnalysis() {
             };
         }
         
-        let nextIndex = 0;
+        const verifiedPlayers = [];
+        let candidateIndex = 0;
+        let isDone = false;
+
         async function worker() {
-            while (nextIndex < topPlayers.length) {
-                const cur = nextIndex++;
-                loadedPlayersResults[cur] = await fetchSinglePlayerGear(topPlayers[cur], cur);
+            while (!isDone && candidateIndex < candidatePool.length) {
+                if (verifiedPlayers.length >= TARGET_PLAYER_COUNT) {
+                    isDone = true;
+                    break;
+                }
+                const cur = candidateIndex++;
+                const candidate = candidatePool[cur];
+                const result = await fetchSinglePlayerGear(candidate);
+                if (result && result.gear && Object.keys(result.gear).length > 0) {
+                    if (result.spec && specObj && result.spec.toLowerCase() === specObj.name.toLowerCase()) {
+                        if (verifiedPlayers.length < TARGET_PLAYER_COUNT) {
+                            verifiedPlayers.push(result);
+                            const currentPct = 20 + Math.floor((verifiedPlayers.length / TARGET_PLAYER_COUNT) * 45);
+                            const runLabel = result.runInfo ? ` (+${result.runInfo.level} ${result.runInfo.dungeon})` : '';
+                            setProgress(currentPct, `Verificado [${result.spec}]: ${result.name}${runLabel} (${verifiedPlayers.length}/${TARGET_PLAYER_COUNT})...`);
+                        }
+                        if (verifiedPlayers.length >= TARGET_PLAYER_COUNT) {
+                            isDone = true;
+                            break;
+                        }
+                    }
+                }
             }
         }
         
-        const workerCount = Math.min(CONCURRENCY, topPlayers.length);
+        const workerCount = Math.min(CONCURRENCY, candidatePool.length);
         const workers = [];
         for (let w = 0; w < workerCount; w++) {
             workers.push(worker());
         }
         await Promise.all(workers);
         
-        const loadedPlayers = loadedPlayersResults.filter(Boolean);
+        // Sort verified players by score descending
+        verifiedPlayers.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+        const loadedPlayers = verifiedPlayers;
         if (loadedPlayers.length === 0) {
-            throw new Error('No se pudo descargar el equipamiento de los jugadores.');
+            throw new Error(`No se encontraron jugadores verificados para la especialización ${specObj?.name || specSlug}.`);
         }
         
         setProgress(65, 'Analizando atributos secundarios y gemas con Wowhead...');
